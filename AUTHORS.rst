@@ -2,4 +2,4 @@
 Contributors
 ============
 
-* luochenghuang <luocheng@uw.edu>
+* Luocheng Huang <luocheng@uw.edu>

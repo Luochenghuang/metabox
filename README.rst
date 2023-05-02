@@ -22,13 +22,6 @@
     .. image:: https://img.shields.io/twitter/url/http/shields.io.svg?style=social&label=Twitter
         :alt: Twitter
         :target: https://twitter.com/metabox
-
-.. image:: https://img.shields.io/badge/-PyScaffold-005CA0?logo=pyscaffold
-    :alt: Project generated with PyScaffold
-    :target: https://pyscaffold.org/
-
-|
-
 =======
 metabox
 =======
@@ -37,10 +30,14 @@ metabox
     A multi-scale optimization framework for diffractive optical systems.
 
 
-A longer description of your project goes here...
+A longer description goes here...
 
 
-.. _pyscaffold-notes:
+Install
+=============================
+    git clone https://github.com/Luochenghuang/metabox.git
+    cd metabox
+    pip install .
 
 Making Changes & Contributing
 =============================
@@ -62,6 +59,7 @@ Don't forget to tell your contributors to also install and use pre-commit.
 
 Note
 ====
-
-This project has been set up using PyScaffold 4.4.1. For details and usage
-information on PyScaffold see https://pyscaffold.org/.
+.. image:: https://img.shields.io/badge/-PyScaffold-005CA0?logo=pyscaffold
+    :alt: Project generated with PyScaffold
+    :target: https://pyscaffold.org/
+|
