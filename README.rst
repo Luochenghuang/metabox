@@ -36,12 +36,13 @@ A longer description goes here...
 =======
 Install
 =======
-```
+Run the following commands to install `metabox`::
+
     git clone https://github.com/Luochenghuang/metabox.git
     cd metabox
     pip install .
-```
 
+=============================
 Making Changes & Contributing
 =============================
 
