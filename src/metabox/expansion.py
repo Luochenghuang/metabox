@@ -4,9 +4,10 @@ Defines functions to expand a 1d field to a 2d field.
 import os
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-import tensorflow as tf
-import numpy as np
 import pickle
+
+import numpy as np
+import tensorflow as tf
 
 
 def expand_to_2d(tensor: tf.Tensor, basis_dir="basis_data") -> tf.Tensor:
@@ -31,7 +32,7 @@ def expand_to_2d(tensor: tf.Tensor, basis_dir="basis_data") -> tf.Tensor:
 
     # feed radial profile to the basis matrix to get the [batchsize, pixelsX, pixelsY] phase matrix
     circle = tf.sparse.sparse_dense_matmul(radial_arr, basis)
-    circle = tf.math.conj(circle) # this is a hack to get the correct phase
+    circle = tf.math.conj(circle)  # this is a hack to get the correct phase
     return tf.reshape(circle, [-1, radius_size * 2, radius_size * 2])
 
 
@@ -50,9 +51,7 @@ def load_basis(n_pix, basis_dir=None) -> tf.Tensor:
     """
 
     # Initialize radius to circle basis
-    basis_file_path = os.path.join(
-        basis_dir, "r2c_basis_{}".format(n_pix // 2)
-    )
+    basis_file_path = os.path.join(basis_dir, "r2c_basis_{}".format(n_pix // 2))
     if basis_dir is not None:
         if os.path.exists(basis_file_path):
             with open(basis_file_path, "rb") as picked_file:
@@ -61,10 +60,10 @@ def load_basis(n_pix, basis_dir=None) -> tf.Tensor:
         else:
             print("Basis file not found. Creating basis.")
 
-            basis_tensor = tf.cast(
-                radius_to_circle_basis(n_pix // 2), tf.complex64
-            )
+            basis_tensor = tf.cast(radius_to_circle_basis(n_pix // 2), tf.complex64)
 
+            if not os.path.exists(basis_dir):
+                os.makedirs(basis_dir)
             with open(basis_file_path, "wb") as output_file:
                 pickle.dump(basis_tensor, output_file)
             return tf.cast(basis_tensor, tf.complex64)

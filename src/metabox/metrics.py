@@ -4,11 +4,13 @@ This file contains the functions to calculate the metrics of the optical system.
 import os
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-import tensorflow as tf
-import propagation
-from scipy import special
 from typing import List
+
 import numpy as np
+import tensorflow as tf
+from scipy import special
+
+from metabox import propagation
 
 
 def get_ideal_mtf_volume(
@@ -24,9 +26,7 @@ def get_ideal_mtf_volume(
     Returns:
         np.ndarray: the volume under the ideal MTF surface.
     """
-    lens_radius = (
-        field_props.n_pixels * field_props.period / 2 / field_props.upsampling
-    )
+    lens_radius = field_props.n_pixels * field_props.period / 2 / field_props.upsampling
     mtf_norm_arr = []
     for wavelength in field_props.wavelength:
         sampling_radius = lens_radius
@@ -71,9 +71,7 @@ def get_max_intensity(field: propagation.Field2D) -> tf.Tensor:
     return tf.math.reduce_max(intensity, axis=[-1, -2])
 
 
-def get_mtf_volume(
-    field: propagation.Field2D, use_log: bool = False
-) -> tf.Tensor:
+def get_mtf_volume(field: propagation.Field2D, use_log: bool = False) -> tf.Tensor:
     """Returns the volume under the MTF surface.
 
     Args:
@@ -111,6 +109,7 @@ def get_mtf_volume(
         volume = tf.math.reduce_mean(volume)
 
     return volume
+
 
 def get_center_intensity(
     field: propagation.Field2D, use_log: bool = False

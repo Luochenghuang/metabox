@@ -33,11 +33,14 @@ metabox
 A longer description goes here...
 
 
+=======
 Install
-=============================
+=======
+```
     git clone https://github.com/Luochenghuang/metabox.git
     cd metabox
     pip install .
+```
 
 Making Changes & Contributing
 =============================

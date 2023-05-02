@@ -1,9 +1,11 @@
-from typing import Tuple, Union, List
-from utils import ParameterType, CoordType
-import tensorflow as tf
 import dataclasses
-import numpy as np
+from typing import List, Tuple, Union
+
 import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
+
+from metabox.utils import CoordType, ParameterType
 
 
 @dataclasses.dataclass
@@ -115,23 +117,17 @@ class Canvas:
 
         if use_complex:
             self.map = tf.cast(self.map, tf.complex64)
-            self.background_value = tf.cast(
-                self.background_value, tf.complex64
-            )
+            self.background_value = tf.cast(self.background_value, tf.complex64)
         self.use_complex = use_complex
 
         for shape in shape_list:
-            self.merge_shape(
-                shape, enforce_4fold_symmetry=self.enforce_4fold_symmetry
-            )
+            self.merge_shape(shape, enforce_4fold_symmetry=self.enforce_4fold_symmetry)
 
         if use_complex:
             return self.map + tf.cast(self.background_value, tf.complex64)
         return self.map + self.background_value
 
-    def merge_shape(
-        self, shape: Shape, enforce_4fold_symmetry: bool
-    ) -> tf.Tensor:
+    def merge_shape(self, shape: Shape, enforce_4fold_symmetry: bool) -> tf.Tensor:
         """Adds a shape onto the canvas.
 
         Args:
@@ -313,9 +309,7 @@ class Canvas:
             y_width: The width of the rectangle in the y direction.
             rotation_deg: The rotation of the rectangle in degrees. Defaults to 0.
         """
-        vertices = rectangle_to_vertices(
-            center, x_width, y_width, rotation_deg
-        )
+        vertices = rectangle_to_vertices(center, x_width, y_width, rotation_deg)
         self.map = _add_polygon(self, vertices).map
 
     def add_circle(
@@ -391,9 +385,7 @@ def _add_point(canvas, p: CoordType, radius: ParameterType = 0.5) -> Canvas:
     p = _floatt(p)
     new_xx = canvas.xx - p[0] / canvas.spacing
     new_yy = canvas.yy + p[1] / canvas.spacing
-    canvas.map += tf.exp(
-        (-tf.square(new_xx) - tf.square(new_yy)) / (radius**2)
-    )
+    canvas.map += tf.exp((-tf.square(new_xx) - tf.square(new_yy)) / (radius**2))
     return canvas
 
 
@@ -411,9 +403,7 @@ def _add_circle(canvas, center: CoordType, radius: ParameterType) -> Canvas:
     center = _floatt(center)
     new_xx = canvas.xx - center[0] / canvas.spacing
     new_yy = canvas.yy + center[1] / canvas.spacing
-    canvas.map += radius / canvas.spacing - tf.sqrt(
-        (new_xx**2) + (new_yy**2)
-    )
+    canvas.map += radius / canvas.spacing - tf.sqrt((new_xx**2) + (new_yy**2))
     return _apply_threshold(canvas)
 
 
@@ -483,12 +473,8 @@ def _apply_threshold(
         The canvas with the threshold applied.
     """
     canvas.map += offset
-    canvas.map = tf.where(
-        canvas.map > high_threshold, high_threshold, canvas.map
-    )
-    canvas.map = tf.where(
-        canvas.map < low_threshold, low_threshold, canvas.map
-    )
+    canvas.map = tf.where(canvas.map > high_threshold, high_threshold, canvas.map)
+    canvas.map = tf.where(canvas.map < low_threshold, low_threshold, canvas.map)
     if norm is not None:
         canvas.map /= norm
     else:
@@ -625,9 +611,7 @@ def _add_polygon(
         return _add_convex_polygon(canvas, points)
 
     for i in range(len(points)):
-        canvas = _add_triangle(
-            canvas, (0, 0), points[i], points[(i + 1) % len(points)]
-        )
+        canvas = _add_triangle(canvas, (0, 0), points[i], points[(i + 1) % len(points)])
     if keep_positive:
         canvas.map = tf.abs(canvas.map)
     if apply_threshold:
@@ -635,6 +619,7 @@ def _add_polygon(
             canvas, high_threshold=1.0, low_threshold=0.0, offset=0.0
         )
     return canvas
+
 
 def rectangle_to_vertices(
     center: Tuple[float, float],

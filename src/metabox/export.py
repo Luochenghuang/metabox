@@ -2,16 +2,15 @@
 This module contains functions to generate the GDSII and other visualization files.
 """
 
-import os
 import importlib
+import os
 from typing import Union
-import numpy as np
-import expansion
-import assembly
-import atom
-import tensorflow as tf
+
 import gdspy
-import rcwa
+import numpy as np
+import tensorflow as tf
+
+from metabox import assemly, atom, expansion, rcwa
 
 
 def gen_unit_cell_square(this_atom: atom.SquarePillar):
@@ -24,9 +23,7 @@ def gen_unit_cell_square(this_atom: atom.SquarePillar):
         gdspy.Rectangle: the unit cell.
     """
     if not isinstance(this_atom, atom.SquarePillar):
-        raise TypeError(
-            "The atom type '{}' is not supported.".format(type(this_atom))
-        )
+        raise TypeError("The atom type '{}' is not supported.".format(type(this_atom)))
     a = this_atom.pillar_width * 1e6
     return gdspy.Rectangle((-a / 2, -a / 2), (a / 2, a / 2))
 
@@ -72,9 +69,7 @@ def gen_unit_cell(the_atom):
     elif isinstance(the_atom, atom.CrossPillar):
         return gen_unit_cell_cross(the_atom)
     else:
-        raise TypeError(
-            "The atom type '{}' is not supported.".format(type(the_atom))
-        )
+        raise TypeError("The atom type '{}' is not supported.".format(type(the_atom)))
 
 
 def unit_cell_to_gds_shape(cell: rcwa.UnitCell, layer: int = 0):
@@ -138,12 +133,8 @@ def get_loc_along_circle(
     location_index_arr = np.argwhere(circle == 1)
     hp = period / 2
     radius_in_micron = radius_in_meters * 1e6
-    x_coor = np.linspace(
-        -radius_in_micron + hp, radius_in_micron - hp, radius_size * 2
-    )
-    y_coor = np.linspace(
-        -radius_in_micron + hp, radius_in_micron - hp, radius_size * 2
-    )
+    x_coor = np.linspace(-radius_in_micron + hp, radius_in_micron - hp, radius_size * 2)
+    y_coor = np.linspace(-radius_in_micron + hp, radius_in_micron - hp, radius_size * 2)
     x_locations = x_coor.take(location_index_arr[:, 0])
     y_locations = y_coor.take(location_index_arr[:, 1])
     return np.stack([x_locations, y_locations])
@@ -189,9 +180,7 @@ def generate_noncircular_gds(
     )
     all_locations = np.stack(np.meshgrid(x_locations, y_locations), axis=-1)
     all_locations = np.reshape(all_locations, (-1, 2))
-    for radial_ix, (this_atom, locations) in enumerate(
-        zip(atom_array, all_locations)
-    ):
+    for radial_ix, (this_atom, locations) in enumerate(zip(atom_array, all_locations)):
         scatterer = gen_unit_cell(this_atom)
         if inverted:
             box_hw = periodicity / 2.0
@@ -320,8 +309,10 @@ def generate_gds_new(
     r2c_basis = expansion.radius_to_circle_basis(n_pixels_radial)
     r2c_basis = tf.cast(r2c_basis, tf.float64)
     dummy_incidence = assembly.Incidence(wavelength=1.0, theta=[0], phi=[0])
-    cell_array = metasurface.atom_1d.proto_unit_cell.generate_cells_from_parameter_tensor(
-        metasurface.atom_1d.tensor
+    cell_array = (
+        metasurface.atom_1d.proto_unit_cell.generate_cells_from_parameter_tensor(
+            metasurface.atom_1d.tensor
+        )
     )
     for radial_ix, this_cell in enumerate(cell_array):
         polygon = unit_cell_to_gds_shape(this_cell)

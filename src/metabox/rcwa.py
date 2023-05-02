@@ -1,20 +1,19 @@
 import sys
 
 sys.path.insert(0, "..")
-import multiprocessing
-import raster
+import copy
+import dataclasses
 import gc
+import multiprocessing
 import warnings
+from typing import Any, Dict, List, Tuple, Union
+
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-import dataclasses
-import matplotlib.pyplot as plt
-from typing import List, Union, Tuple, Any, Dict
-from utils import Feature, Incidence, ParameterType, CoordType
-import utils
-import rcwa_tf
-import copy
-from icecream import ic
+
+from metabox import raster, rcwa_tf, utils
+from metabox.utils import CoordType, Feature, Incidence, ParameterType
 
 
 def _get_features(parameter) -> List[Feature]:
@@ -51,16 +50,12 @@ class Parameterizable:
 
     def initialize_values(
         self,
-        value_assignment: Union[
-            None, Tuple[List[Feature], List[float]]
-        ] = None,
+        value_assignment: Union[None, Tuple[List[Feature], List[float]]] = None,
     ) -> None:
         """Initializes the variables."""
         if value_assignment is not None:
             if len(value_assignment) != 2:
-                raise ValueError(
-                    "value_assignment must be a tuple of length 2."
-                )
+                raise ValueError("value_assignment must be a tuple of length 2.")
             elif len(value_assignment[0]) != len(value_assignment[1]):
                 raise ValueError(
                     "value_assignment must be a tuple of lists of equal length."
@@ -134,9 +129,7 @@ class Polygon(Shape):
             raise ValueError("A polygon must have at least 3 vertices.")
         for vertex in self.vertices:
             if len(vertex) != 2:
-                raise ValueError(
-                    "Each vertex must be a tuple of (x, y) coordinates."
-                )
+                raise ValueError("Each vertex must be a tuple of (x, y) coordinates.")
         return super().__post_init__()
 
     def get_shape(self):
@@ -277,9 +270,7 @@ class Layer(Parameterizable):
 
     def initialize_values(
         self,
-        value_assignment: Union[
-            None, Tuple[List[Feature], List[float]]
-        ] = None,
+        value_assignment: Union[None, Tuple[List[Feature], List[float]]] = None,
     ) -> None:
         """Initializes the layer variables."""
         super().initialize_values(value_assignment)
@@ -327,15 +318,11 @@ class UnitCell(Parameterizable):
     def __post_init__(self):
         super().__init__()
         if len(self.periodicity) != 2:
-            raise ValueError(
-                "The periodicity must be a tuple of (x, y) in meters."
-            )
+            raise ValueError("The periodicity must be a tuple of (x, y) in meters.")
 
     def initialize_values(
         self,
-        value_assignment: Union[
-            None, Tuple[List[Feature], List[float]]
-        ] = None,
+        value_assignment: Union[None, Tuple[List[Feature], List[float]]] = None,
     ) -> None:
         """Initializes the layer variables."""
         super().initialize_values(value_assignment)
@@ -398,9 +385,7 @@ class UnitCell(Parameterizable):
         raise ValueError("Feature not found.")
 
 
-def _replace_this_feature_with_value_recursively(
-    parent: Any, child_field: Any
-) -> None:
+def _replace_this_feature_with_value_recursively(parent: Any, child_field: Any) -> None:
     """Recursively replaces the features with their values.
 
     if the field is a feature, replace it with its value. If the field is a
@@ -493,14 +478,10 @@ class ProtoUnitCell:
             tensor_columns.append(tf.random.uniform([n_cells], vmin, vmax))
 
         tensor = tf.stack(tensor_columns, axis=0)
-        constraint_func = lambda x: tf.clip_by_value(
-            x, clip_value_min, clip_value_max
-        )
+        constraint_func = lambda x: tf.clip_by_value(x, clip_value_min, clip_value_max)
         return tf.Variable(tensor, constraint=constraint_func)
 
-    def generate_cells_from_parameter_tensor(
-        self, tensor: tf.Tensor
-    ) -> List[UnitCell]:
+    def generate_cells_from_parameter_tensor(self, tensor: tf.Tensor) -> List[UnitCell]:
         """Returns an array of unit cells from a tensor shape: (n_cell, n_feat).
 
         Args:
@@ -510,9 +491,7 @@ class ProtoUnitCell:
             ValueError: when the tensor does not have the correct shape.
         """
         if tensor.shape[0] != len(self.features):
-            raise ValueError(
-                "The tensor must have shape (n_features, n_unit_cells)."
-            )
+            raise ValueError("The tensor must have shape (n_features, n_unit_cells).")
 
         unit_cell_array = []
         for i in range(tensor.shape[-1]):
@@ -642,16 +621,10 @@ class SimInstance:
             raise ValueError("All y periods must be the same.")
 
         # check all ref. indices are the same for transmission and reflection regions
-        refl_indices = [
-            unit_cell.refl_index for unit_cell in self.unit_cell_array
-        ]
-        tran_indices = [
-            unit_cell.tran_index for unit_cell in self.unit_cell_array
-        ]
+        refl_indices = [unit_cell.refl_index for unit_cell in self.unit_cell_array]
+        tran_indices = [unit_cell.tran_index for unit_cell in self.unit_cell_array]
         if len(set(refl_indices)) != 1:
-            raise ValueError(
-                "All ref. indices must be the same for reflection region."
-            )
+            raise ValueError("All ref. indices must be the same for reflection region.")
         if len(set(tran_indices)) != 1:
             raise ValueError(
                 "All ref. indices must be the same for transmission region."
@@ -799,16 +772,12 @@ def combine_sim_results(
     ry = tf.concat([sim_result.ry for sim_result in sim_results], axis=1)
     rz = tf.concat([sim_result.rz for sim_result in sim_results], axis=1)
     r_eff = tf.concat([sim_result.r_eff for sim_result in sim_results], axis=1)
-    r_power = tf.concat(
-        [sim_result.r_power for sim_result in sim_results], axis=1
-    )
+    r_power = tf.concat([sim_result.r_power for sim_result in sim_results], axis=1)
     tx = tf.concat([sim_result.tx for sim_result in sim_results], axis=1)
     ty = tf.concat([sim_result.ty for sim_result in sim_results], axis=1)
     tz = tf.concat([sim_result.tz for sim_result in sim_results], axis=1)
     t_eff = tf.concat([sim_result.t_eff for sim_result in sim_results], axis=1)
-    t_power = tf.concat(
-        [sim_result.t_power for sim_result in sim_results], axis=1
-    )
+    t_power = tf.concat([sim_result.t_power for sim_result in sim_results], axis=1)
     xy_harmonics = sim_results[0].xy_harmonics
     return SimResult(
         rx=rx,
@@ -900,9 +869,7 @@ def simulate_parameterized_unit_cells_one_batch(
     fwd_jvp_mode: bool = True,
 ) -> tf.Tensor:
     if not sim_config.return_tensor:
-        raise ValueError(
-            "SimConfig.return_tensor=True is required for this method."
-        )
+        raise ValueError("SimConfig.return_tensor=True is required for this method.")
 
     if len(proto_cell.features) == 0:
         raise ValueError("The proto cell has no features (not parameterized).")
@@ -951,16 +918,12 @@ def simulate_parameterized_unit_cells_one_batch_no_jvp(
     fwd_jvp_mode: bool = False,
 ) -> tf.Tensor:
     if not sim_config.return_tensor:
-        raise ValueError(
-            "SimConfig.return_tensor=True is required for this method."
-        )
+        raise ValueError("SimConfig.return_tensor=True is required for this method.")
 
     if len(proto_cell.features) == 0:
         raise ValueError("The proto cell has no features (not parameterized).")
 
-    children = proto_cell.generate_cells_from_parameter_tensor(
-        parameter_tensor
-    )
+    children = proto_cell.generate_cells_from_parameter_tensor(parameter_tensor)
     sim_instance = SimInstance(
         unit_cell_array=children,
         incidence=incidence,
@@ -1033,9 +996,7 @@ def _compute_output_and_jvp(
                 tape.watch(cell_param)
                 cell_param_list[i] = cell_param
             parameter_tensor = tf.concat(cell_param_list, axis=-1)
-            children = proto_cell.generate_cells_from_parameter_tensor(
-                parameter_tensor
-            )
+            children = proto_cell.generate_cells_from_parameter_tensor(parameter_tensor)
             sim_instance = SimInstance(
                 unit_cell_array=children,
                 incidence=incidence,
@@ -1043,9 +1004,7 @@ def _compute_output_and_jvp(
             )
             # output in the shape of (batch_size, n_cells, t_xy)
             output = simulate_one(sim_instance)
-            outputs = tf.split(
-                output, num_or_size_splits=len(cell_param_list), axis=1
-            )
+            outputs = tf.split(output, num_or_size_splits=len(cell_param_list), axis=1)
 
         jac_array = []
         for cell_output, cell_param in zip(outputs, cell_param_list):

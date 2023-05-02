@@ -2,19 +2,21 @@
 This file contains the classes and functions to simulate the propagation of light.
 """
 from __future__ import annotations
+
 import os
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import copy
-import tensorflow as tf
-import numpy as np
-from typing import Union, List, Tuple
 import dataclasses
-import expansion
-import matplotlib.pyplot as plt
-from matplotlib.ticker import EngFormatter
 import itertools
-import utils
+from typing import List, Tuple, Union
+
+import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
+from matplotlib.ticker import EngFormatter
+
+from metabox import expansion, utils
 
 
 @dataclasses.dataclass
@@ -146,15 +148,11 @@ class Field2D(FieldProperties):
     def __post_init__(self):
         # Check that the field tensor is of the correct shape.
         if len(self.tensor.shape) != 3:
-            raise ValueError(
-                "Field tensor must have shape [batchsize, n_pix, n_pix]"
-            )
+            raise ValueError("Field tensor must have shape [batchsize, n_pix, n_pix]")
 
         # check batch size is correct
         n_batch = self.tensor.shape[0]
-        expected_n_batch = (
-            len(self.wavelength) * len(self.theta) * len(self.phi)
-        )
+        expected_n_batch = len(self.wavelength) * len(self.theta) * len(self.phi)
         if n_batch != expected_n_batch:
             raise ValueError(
                 """Batch size of field tensor does not match the number of
@@ -189,9 +187,7 @@ class Field2D(FieldProperties):
             angle = list(itertools.product(self.theta, self.phi))[j]
             f = plt.figure(figsize=(5, 5), dpi=100)
             ax = plt.axes([0, 0.05, 0.9, 0.9])
-            im = ax.imshow(
-                phase[i, j], extent=[-radius, radius, -radius, radius]
-            )
+            im = ax.imshow(phase[i, j], extent=[-radius, radius, -radius, radius])
             formatter0 = EngFormatter(unit="m")
             ax.xaxis.set_major_formatter(formatter0)
             ax.yaxis.set_major_formatter(formatter0)
@@ -233,9 +229,7 @@ class Field2D(FieldProperties):
             angle = list(itertools.product(self.theta, self.phi))[j]
             f = plt.figure(figsize=(5, 5), dpi=100)
             ax = plt.axes([0, 0.05, 0.9, 0.9])
-            im = ax.imshow(
-                intensity[i, j], extent=[-radius, radius, -radius, radius]
-            )
+            im = ax.imshow(intensity[i, j], extent=[-radius, radius, -radius, radius])
             formatter0 = EngFormatter(unit="m")
             ax.xaxis.set_major_formatter(formatter0)
             ax.yaxis.set_major_formatter(formatter0)
@@ -272,15 +266,11 @@ class Field1D(FieldProperties):
     def __post_init__(self):
         # Check that the field tensor is of the correct shape.
         if len(self.tensor.shape) != 2:
-            raise ValueError(
-                "Field tensor must have shape [batchsize, n_pix_radius]"
-            )
+            raise ValueError("Field tensor must have shape [batchsize, n_pix_radius]")
 
         # check batch size is correct
         n_batch = self.tensor.shape[0]
-        expected_n_batch = (
-            len(self.wavelength) * len(self.theta) * len(self.phi)
-        )
+        expected_n_batch = len(self.wavelength) * len(self.theta) * len(self.phi)
         if n_batch != expected_n_batch:
             raise ValueError(
                 """Batch size of field tensor does not match the number of
@@ -520,9 +510,7 @@ def get_propagator_batched(
     Returns:
         propagator: transfer function
     """
-    batch_size = (
-        len(wavelength_sampling) * len(theta_sampling) * len(phi_sampling)
-    )
+    batch_size = len(wavelength_sampling) * len(theta_sampling) * len(phi_sampling)
 
     lam0 = tf.convert_to_tensor(
         np.repeat(
@@ -541,9 +529,7 @@ def get_propagator_batched(
     k = tf.cast(k, dtype=tf.complex64)
 
     if use_padding:
-        k_xlist_pos = (
-            2 * np.pi * np.linspace(0, 1 / (2 * period / upsampling), samp)
-        )
+        k_xlist_pos = 2 * np.pi * np.linspace(0, 1 / (2 * period / upsampling), samp)
         front = k_xlist_pos[-(samp - 1) :]
         front = -front[::-1]
         k_xlist = np.hstack((front, k_xlist_pos))
@@ -641,17 +627,13 @@ def get_propagator_batched(
         kx_region = tf.where(
             kx_cond1,
             _case1(k_x, k_y, k, kx_limit_minus, kx_limit_plus),
-            _where_case2_case3(
-                kx_cond2, k_x, k_y, k, kx_limit_minus, kx_limit_plus
-            ),
+            _where_case2_case3(kx_cond2, k_x, k_y, k, kx_limit_minus, kx_limit_plus),
         )
 
         ky_region = tf.where(
             ky_cond1,
             _case1(k_y, k_x, k, ky_limit_minus, ky_limit_plus),
-            _where_case2_case3(
-                ky_cond2, k_y, k_x, k, ky_limit_minus, ky_limit_plus
-            ),
+            _where_case2_case3(ky_cond2, k_y, k_x, k, ky_limit_minus, ky_limit_plus),
         )
 
         k_region = tf.cast(kx_region & ky_region, dtype=tf.complex64)
@@ -804,9 +786,7 @@ def get_incident_field_2d(
     theta = theta[:, tf.newaxis, tf.newaxis]
     phi = phi[:, tf.newaxis, tf.newaxis]
 
-    phase_def = (
-        2 * np.pi / lam0 * (np.sin(theta) * x_mesh + np.sin(phi) * y_mesh)
-    )
+    phase_def = 2 * np.pi / lam0 * (np.sin(theta) * x_mesh + np.sin(phi) * y_mesh)
     phase_def = tf.cast(phase_def, dtype=tf.complex64)
 
     tensor = tf.exp(1j * phase_def)

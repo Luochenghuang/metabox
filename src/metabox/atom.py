@@ -4,19 +4,20 @@ This module defines classes and functions to simulate meta atoms.
 import os
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-import S4
-import multiprocessing
-import tqdm
 import copy
-import itertools
-import tensorflow as tf
-import numpy as np
-from typing import List, Union
 import dataclasses
-import pandas
-import pickle
+import itertools
 import json
-from utils import Feature
+import multiprocessing
+import pickle
+from typing import List, Union
+
+import numpy as np
+import pandas
+import tensorflow as tf
+import tqdm
+
+from metabox.utils import Feature
 
 ParameterType = Union[Feature, float, tf.Tensor]
 
@@ -43,7 +44,7 @@ class Atom:
     def __post_init__(self):
         self.feature_attrs = []
         self.unique_features = []
-        for (key, value) in dataclasses.asdict(self).items():
+        for key, value in dataclasses.asdict(self).items():
             if isinstance(getattr(self, key), Feature):
                 self.unique_features.append(getattr(self, key))
                 self.feature_attrs.append(key)
@@ -87,7 +88,7 @@ class Atom:
             feature.value = value
 
         # replace the features with their values
-        for (key, value) in dataclasses.asdict(new_self).items():
+        for key, value in dataclasses.asdict(new_self).items():
             this_attr = getattr(new_self, key)
             if isinstance(this_attr, Feature):
                 setattr(new_self, key, this_attr.value)
@@ -288,9 +289,7 @@ class AtomLibrary:
         Returns:
             Tuple[np.ndarray, np.ndarray]: the training data.
         """
-        feature_keys = [
-            feature.name for feature in self.proto_atom.unique_features
-        ]
+        feature_keys = [feature.name for feature in self.proto_atom.unique_features]
         input_features = self.dataframe[feature_keys].to_numpy()
         output = self.dataframe["coefficient"].to_numpy()
         return (input_features, output)
@@ -342,6 +341,8 @@ def simulate_cross_pillar(
         The complex transmission coefficient of the structure.
     """
 
+    import S4
+
     S = S4.New(
         Lattice=((atom.period, 0), (0, atom.period)),
         NumBasis=atom.truncation_order,
@@ -350,15 +351,11 @@ def simulate_cross_pillar(
     S.SetMaterial(Name="pillar", Epsilon=atom.pillar_index**2)
     S.SetMaterial(Name="pillar_bg", Epsilon=atom.pillar_background_index**2)
     S.SetMaterial(Name="substrate", Epsilon=atom.substrate_index**2)
-    S.SetMaterial(
-        Name="substrate_bg", Epsilon=atom.substrate_background_index**2
-    )
+    S.SetMaterial(Name="substrate_bg", Epsilon=atom.substrate_background_index**2)
 
     # set layers
     S.AddLayer(Name="pillar_bg", Thickness=1.0, Material="pillar_bg")
-    S.AddLayer(
-        Name="meta_atom", Thickness=atom.pillar_height, Material="pillar_bg"
-    )
+    S.AddLayer(Name="meta_atom", Thickness=atom.pillar_height, Material="pillar_bg")
 
     vertices = (
         (atom.bb / 2.0, atom.cc / 2.0),
@@ -382,9 +379,7 @@ def simulate_cross_pillar(
         Angle=0,  # in degrees
         Vertices=vertices,
     )
-    S.AddLayer(
-        Name="buffer", Thickness=atom.buffer_thickness, Material="pillar"
-    )
+    S.AddLayer(Name="buffer", Thickness=atom.buffer_thickness, Material="pillar")
     S.AddLayer(
         Name="substrate",
         Thickness=atom.substrate_thickness,
@@ -411,14 +406,10 @@ def simulate_cross_pillar(
 
     S.SetFrequency(1 / atom.wavelength)
     if atom.use_transmission:
-        (forw_field, back_field) = S.GetAmplitudes(
-            Layer="substrate_bg", zOffset=0
-        )
+        (forw_field, back_field) = S.GetAmplitudes(Layer="substrate_bg", zOffset=0)
         return forw_field[0]
     else:
-        (forw_field, back_field) = S.GetAmplitudes(
-            Layer="pillar_bg", zOffset=0
-        )
+        (forw_field, back_field) = S.GetAmplitudes(Layer="pillar_bg", zOffset=0)
         return back_field[0]
 
 
@@ -454,6 +445,8 @@ def simulate_square_pillar(
         The complex transmission coefficient of the structure.
     """
 
+    import S4
+
     S = S4.New(
         Lattice=((atom.period, 0), (0, atom.period)),
         NumBasis=atom.truncation_order,
@@ -462,15 +455,11 @@ def simulate_square_pillar(
     S.SetMaterial(Name="pillar", Epsilon=atom.pillar_index**2)
     S.SetMaterial(Name="pillar_bg", Epsilon=atom.pillar_background_index**2)
     S.SetMaterial(Name="substrate", Epsilon=atom.substrate_index**2)
-    S.SetMaterial(
-        Name="substrate_bg", Epsilon=atom.substrate_background_index**2
-    )
+    S.SetMaterial(Name="substrate_bg", Epsilon=atom.substrate_background_index**2)
 
     # set layers
     S.AddLayer(Name="pillar_bg", Thickness=1.0, Material="pillar_bg")
-    S.AddLayer(
-        Name="meta_atom", Thickness=atom.pillar_height, Material="pillar_bg"
-    )
+    S.AddLayer(Name="meta_atom", Thickness=atom.pillar_height, Material="pillar_bg")
     S.SetRegionRectangle(
         Layer="meta_atom",
         Material="pillar",
@@ -478,9 +467,7 @@ def simulate_square_pillar(
         Angle=0,  # in degrees
         Halfwidths=(atom.pillar_width / 2, atom.pillar_width / 2),
     )
-    S.AddLayer(
-        Name="buffer", Thickness=atom.buffer_thickness, Material="pillar"
-    )
+    S.AddLayer(Name="buffer", Thickness=atom.buffer_thickness, Material="pillar")
     S.AddLayer(
         Name="substrate",
         Thickness=atom.substrate_thickness,
@@ -507,14 +494,10 @@ def simulate_square_pillar(
 
     S.SetFrequency(1 / atom.wavelength)
     if atom.use_transmission:
-        (forw_field, back_field) = S.GetAmplitudes(
-            Layer="substrate_bg", zOffset=0
-        )
+        (forw_field, back_field) = S.GetAmplitudes(Layer="substrate_bg", zOffset=0)
         return forw_field[0]
     else:
-        (forw_field, back_field) = S.GetAmplitudes(
-            Layer="pillar_bg", zOffset=0
-        )
+        (forw_field, back_field) = S.GetAmplitudes(Layer="pillar_bg", zOffset=0)
         return back_field[0]
 
 

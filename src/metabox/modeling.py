@@ -7,17 +7,18 @@ This module defines classes and functions to create metamodel for proto-atoms[0]
 import os
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-import atom
-import dataclasses
-import numpy as np
-import pickle
-import json
 import copy
-import utils
+import dataclasses
+import json
+import pickle
+from typing import Tuple, Union
+
+import numpy as np
 import tensorflow as tf
 from tensorflow import keras
-from typing import Tuple, Union
 from tqdm.keras import TqdmCallback
+
+from metabox import atom, utils
 
 
 @dataclasses.dataclass
