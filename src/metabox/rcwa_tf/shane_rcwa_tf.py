@@ -6,6 +6,9 @@
 # All rights reserved.
 # lburn (Email: scolbur2@uw.edu)
 
+import os
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 from typing import Tuple
 
 import numpy as np

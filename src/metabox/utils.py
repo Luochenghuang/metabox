@@ -48,7 +48,8 @@ class Feature:
     def initialize_value(self) -> None:
         """Initializes the variables of the feature."""
         if self.initial_value is not None:
-            tensor = tf.cast([self.initial_value], tf.float32)
+            tensor = tf.math.real(self.initial_value)
+            tensor = tf.cast([tensor], tf.float32)
         else:
             tensor = tf.random.uniform([1], self.vmin, self.vmax, tf.float32)
         self.value = tensor

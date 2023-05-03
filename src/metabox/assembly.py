@@ -1888,6 +1888,7 @@ def structure_to_field_1d_mmodel(
     # join the inputs together
     inputs = tf.concat([wave_angle_repeated, structure_var_tiled], 0)
     # TODO: make the float position a parameter.
+    inputs = tf.math.real(inputs)
     inputs = tf.cast(inputs, tf.float32)
     # reorder the inputs
     inputs = tf.gather(inputs, new_order, axis=0)

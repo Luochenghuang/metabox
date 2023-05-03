@@ -1,3 +1,6 @@
+import os
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import dataclasses
 from typing import List, Tuple, Union
 
@@ -351,7 +354,8 @@ def _floatt(x: CoordType) -> CoordType:
     Returns:
         The cleaned up coordinates.
     """
-    return (tf.cast(x[0], tf.float32), tf.cast(x[1], tf.float32))
+    a, b = tf.math.real(x[0]), tf.math.real(x[1])
+    return (tf.cast(a, tf.float32), tf.cast(b, tf.float32))
 
 
 def _blank_canvas_like(canvas) -> Canvas:

@@ -1,6 +1,6 @@
-import sys
+import os
 
-sys.path.insert(0, "..")
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import copy
 import dataclasses
 import gc

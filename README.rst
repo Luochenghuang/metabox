@@ -33,7 +33,6 @@ metabox
 A longer description goes here...
 
 
-=======
 Install
 =======
 Run the following commands to install `metabox`::
@@ -42,7 +41,6 @@ Run the following commands to install `metabox`::
     cd metabox
     pip install .
 
-=============================
 Making Changes & Contributing
 =============================
 
