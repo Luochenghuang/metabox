@@ -22,7 +22,7 @@ from metabox import (
     rcwa,
     utils,
 )
-from metabox.utils import Feature, Incidence
+from metabox.utils import Incidence
 
 # Suppress tensorflow warnings
 tf.get_logger().setLevel(logging.ERROR)

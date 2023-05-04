@@ -4,8 +4,8 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import copy
 import dataclasses
 import gc
-import multiprocessing
 import warnings
+import logging
 from typing import Any, Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt
@@ -14,6 +14,9 @@ import tensorflow as tf
 
 from metabox import raster, rcwa_tf, utils
 from metabox.utils import CoordType, Feature, Incidence, ParameterType
+
+# Suppress tensorflow warnings
+tf.get_logger().setLevel(logging.ERROR)
 
 
 def _get_features(parameter) -> List[Feature]:
