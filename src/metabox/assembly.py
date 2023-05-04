@@ -8,14 +8,20 @@ import itertools
 import logging
 from typing import List, Tuple, Union
 
-import dill
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 import tqdm
 from matplotlib.ticker import EngFormatter
 
-from metabox import atom, expansion, metrics, modeling, propagation, rcwa, utils
+from metabox import (
+    atom,
+    expansion,
+    metrics,
+    modeling,
+    propagation,
+    rcwa,
+    utils,
+)
 from metabox.utils import Feature, Incidence
 
 # Suppress tensorflow warnings
