@@ -375,7 +375,10 @@ class UnitCell(Parameterizable):
 
     def get_thickness(self) -> tf.Tensor:
         """Returns the thickness of the unit cell as a tf.Tensor."""
-        return tf.cast([layer.thickness for layer in self.layers], tf.float32)
+        return tf.cast(
+            [tf.math.real(layer.thickness) for layer in self.layers],
+            tf.float32,
+        )
 
     def find_feature_index(self, feature_str):
         """Returns the index of the feature with the given name."""
