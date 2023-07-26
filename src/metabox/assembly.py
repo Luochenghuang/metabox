@@ -6,6 +6,7 @@ import dataclasses
 import enum
 import itertools
 import logging
+import dill
 from typing import List, Tuple, Union
 
 import numpy as np
