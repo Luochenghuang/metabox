@@ -16,6 +16,16 @@ def suppress_stdout_stderr() -> None:
             yield (err, out)
 
 
+def recursively_convert_ndarray_in_dict_to_list(item: Any):
+    """Recursively converts ndarray item in dict to list"""
+    if type(item) is np.ndarray:
+        item = item.tolist()
+    elif type(item) is dict:
+        for key, value in item.items():
+            item[key] = recursively_convert_ndarray_in_dict_to_list(value)
+    return item
+
+
 @dataclasses.dataclass
 class Feature:
     """Defines a feature variable.

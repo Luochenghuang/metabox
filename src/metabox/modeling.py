@@ -49,6 +49,7 @@ class SimulationLibrary:
         n_features = feature_values.shape[0]
 
         # expand the feature values to include the wavelength
+        # TODO: use numpy operations instead of tf operations
         wavelengths = tf.cast(wavelength_values, tf.float32)[:, tf.newaxis]
         wavelengths = tf.tile(wavelengths, [1, n_instances])
         wavelengths = wavelengths[tf.newaxis, ...]
@@ -62,7 +63,22 @@ class SimulationLibrary:
     def get_training_y(self) -> np.ndarray:
         """Returns the training output."""
         output_values = self.simulation_output
-        return output_values.numpy().reshape(-1, 2)
+        return output_values.reshape(-1, 2)
+
+    def save(self, name: str, path: str, overwrite: bool = False):
+        """Saves the simulation library
+
+        Args:
+            name (str): the name of the library
+            path (str): a path to save the library to
+            overwrite (bool): Whether or not to overwrite exisiting library.
+        """
+        save_simulation_library(
+            self,
+            name=name,
+            path=path,
+            overwrite=overwrite,
+        )
 
 
 def sample_protocell(
@@ -103,7 +119,7 @@ def sample_protocell(
         protocell,
         incidence,
         sim_config,
-    )
+    ).numpy()
 
     return SimulationLibrary(
         protocell=protocell,
@@ -399,3 +415,61 @@ def create_and_train_model(
         history_list=[tx_history, ty_history],
         protocell=sim_lib.protocell,
     )
+
+
+def save_simulation_library(
+    sim_lib: SimulationLibrary,
+    name: str,
+    path: str,
+    overwrite: bool = False,
+) -> None:
+    """Saves the metamodel to a file.
+
+    Args:
+        filename (str): The name of the file to save the metamodel to.
+        path (str): The path to the file.
+    """
+    if not os.path.isdir(path):
+        raise ValueError("path must be a directory.")
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    full_path = os.path.join(path, name + ".pkl")
+    if not overwrite:
+        if os.path.exists(full_path):
+            raise ValueError("File already exists.")
+
+    filehandler_pkl = open(full_path, "wb")
+    pickle.dump(sim_lib, filehandler_pkl)
+    json_dict = dataclasses.asdict(sim_lib)
+    for item in json_dict:
+        json_dict[item] = utils.recursively_convert_ndarray_in_dict_to_list(
+            item
+        )
+        if np.any(np.iscomplex(json_dict[item])):
+            json_dict[item] = str(json_dict[item])
+    json_d = json.dumps(json_dict, indent=4)
+    with open(full_path + ".json", "w") as outfile:
+        outfile.write(json_d)
+
+    print("Saved the atom library to " + full_path)
+
+
+def load_simulation_library(
+    name: str,
+    path: str,
+) -> SimulationLibrary:
+    """Loads a AtomLibrary from a file.
+
+    Args:
+        name (str): The name of the file to load the atom library from.
+        path (str): The path to the file.
+
+    Returns:
+        AtomLibrary: The loaded atom library.
+    """
+    full_path = os.path.join(path, name + ".pkl")
+    if not os.path.exists(full_path):
+        raise ValueError("File does not exist.")
+    filehandler = open(full_path, "rb")
+    return pickle.load(filehandler)

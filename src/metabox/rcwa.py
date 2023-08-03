@@ -1,11 +1,6 @@
-import os
+import os, tqdm, copy, dataclasses, gc, warnings, logging
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-import copy
-import dataclasses
-import gc
-import warnings
-import logging
 from typing import Any, Dict, List, Tuple, Union
 
 import matplotlib.pyplot as plt
@@ -874,7 +869,7 @@ def simulate_parameterized_unit_cells(
             for i in range(0, parameter_tensor.shape[1], minibatch_size)
         ]
         sim_results = []
-        for parameters_chunk in parameters_chunks:
+        for parameters_chunk in tqdm.tqdm(parameters_chunks):
             sim_results.append(
                 simulate_func(
                     parameter_tensor=parameters_chunk,
