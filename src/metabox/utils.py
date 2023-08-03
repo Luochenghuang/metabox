@@ -37,7 +37,9 @@ class Feature:
 
     def _post_init__(self):
         if ":" in self.name:
-            raise ValueError("The name of the feature cannot contain the character '~'")
+            raise ValueError(
+                "The name of the feature cannot contain the character '~'"
+            )
 
     def __eq__(self, other):
         return self.name == other.name
@@ -57,7 +59,9 @@ class Feature:
     def set_variable(self) -> None:
         """Convert self.value to a variable"""
         constraint_func = lambda x: tf.clip_by_value(x, self.vmin, self.vmax)
-        self.value = tf.Variable(self.value, constraint=constraint_func, name=self.name)
+        self.value = tf.Variable(
+            self.value, constraint=constraint_func, name=self.name
+        )
 
     def set_value(self, value: Any) -> None:
         """Set the value of the feature to value"""
@@ -135,8 +139,12 @@ def unravel_incidence(incidence: Incidence) -> Dict[str, Any]:
         phi=incidence.phi,
     )
     x_pol, y_pol = incidence.jones_vector
-    x_pol_batch = tf.cast(tf.repeat(x_pol, len(wavelength_batch)), tf.complex64)
-    y_pol_batch = tf.cast(tf.repeat(y_pol, len(wavelength_batch)), tf.complex64)
+    x_pol_batch = tf.cast(
+        tf.repeat(x_pol, len(wavelength_batch)), tf.complex64
+    )
+    y_pol_batch = tf.cast(
+        tf.repeat(y_pol, len(wavelength_batch)), tf.complex64
+    )
 
     return {
         "wavelength": wavelength_batch,
