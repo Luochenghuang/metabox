@@ -15,7 +15,6 @@ import tqdm
 from matplotlib.ticker import EngFormatter
 
 from metabox import (
-    atom,
     expansion,
     metrics,
     modeling,
@@ -64,21 +63,19 @@ class AtomArray2D:
         Raises:
             ValueError: if the feature is not found in the atom array.
         """
-        all_features = copy.deepcopy(self.mmodel.proto_atom.unique_features)
+        all_features = copy.deepcopy(self.mmodel.protocell.features)
         if not feature_str in [f.name for f in all_features]:
             raise ValueError(
                 "Feature {} not found in the atom array.".format(feature_str)
             )
         index = 0
         for i in range(len(all_features)):
-            if all_features[i].name == "wavelength":
-                continue
             if all_features[i].name == feature_str:
                 break
             index += 1
         return index
 
-    def get_atom_array(self, incidence: "Incidence") -> List[atom.Atom]:
+    def get_atom_array(self, incidence: "Incidence") -> List[rcwa.UnitCell]:
         return AtomArray1D(
             self.tensor,
             self.period,
@@ -143,14 +140,12 @@ class AtomArray2D:
         n_pixels = int(np.sqrt(self.tensor.shape[-1]))
         diameter = self.period * n_pixels
         radius = diameter / 2.0
-        features_with_wavelength = copy.deepcopy(self.mmodel.proto_atom.unique_features)
+        features_with_wavelength = copy.deepcopy(self.mmodel.protocell.features)
         features_with_wavelength = [
             feature.name for feature in features_with_wavelength
         ]
         all_features = []
         for feature_str in features_with_wavelength:
-            if feature_str == "wavelength":
-                continue
             all_features.append(feature_str)
 
         if only_feature is not None:
@@ -189,6 +184,7 @@ class AtomArray1D:
         period: the period of the atom array in meters.
         mmodel: the `MetaModel` used to generate the atom array.
             The `MetaModel` stores the trained model and the structure of the atom.
+        proto_unit_cell: the proto unit cell (rcwa.ProtoUnitCell)
     """
 
     tensor: tf.Tensor
@@ -215,15 +211,13 @@ class AtomArray1D:
         Raises:
             ValueError: if the feature is not found in the atom array.
         """
-        all_features = copy.deepcopy(self.mmodel.proto_atom.unique_features)
+        all_features = copy.deepcopy(self.mmodel.protocell.features)
         if not feature_str in [f.name for f in all_features]:
             raise ValueError(
                 "Feature {} not found in the atom array.".format(feature_str)
             )
         index = 0
         for i in range(len(all_features)):
-            if all_features[i].name == "wavelength":
-                continue
             if all_features[i].name == feature_str:
                 break
             index += 1
@@ -252,7 +246,7 @@ class AtomArray1D:
 
         return AtomArray2D(new_tensor, self.period, self.mmodel)
 
-    def get_atom_array(self, incidence: "Incidence") -> List[atom.Atom]:
+    def get_atom_array(self, incidence: "Incidence") -> List[rcwa.UnitCell]:
         """Returns the batched atom array with shape (n_batch, n_atoms)."""
         wavelengths = np.repeat(
             incidence.wavelength,
@@ -263,16 +257,13 @@ class AtomArray1D:
         for wavelength in wavelengths:
             atom_array = []
             for index in range(self.tensor.shape[-1]):
-                this_atom = copy.deepcopy(self.mmodel.proto_atom)
+                this_atom = copy.deepcopy(self.mmodel.protocell)
                 parameters = copy.deepcopy(self.tensor[:, index].numpy().tolist())
 
                 # sample features
                 feature_values_list = []
-                for feature in this_atom.unique_features:
-                    if feature.name == "wavelength":
-                        feature_values_list.append(wavelength)
-                    else:
-                        feature_values_list.append(parameters.pop(0))
+                for _ in this_atom.unique_features:
+                    feature_values_list.append(parameters.pop(0))
 
                 new_atom = this_atom.gen_atom_from_values(feature_values_list)
                 atom_array.append(new_atom)
@@ -1060,7 +1051,7 @@ class Metasurface(Surface):
         )
         self.use_metamodel = has_metamodel
         if self.use_metamodel:
-            self.periodicity = self.metamodel.proto_atom.period
+            self.periodicity = self.metamodel.protocell.proto_unit_cell.periodicity[0]
         else:
             self.periodicity = self.proto_unit_cell.proto_unit_cell.periodicity[0]
         self.n_pixels_radial = int(self.diameter / 2 / self.periodicity)
@@ -1191,7 +1182,7 @@ class Metasurface(Surface):
 
         return field_2d
 
-    def get_atom_arry(self, incidence: Incidence) -> List[atom.Atom]:
+    def get_atom_arry(self, incidence: Incidence) -> List[rcwa.UnitCell]:
         """Gets the atom array for the given incidence."""
         return self.atom_1d.get_atom_array(incidence)
 
@@ -1856,21 +1847,18 @@ def structure_to_field_1d_mmodel(
     """
 
     structure_n_features = structure.tensor.shape[0]
-    metamodel_n_features = len(structure.mmodel.proto_atom.unique_features)
-    if structure_n_features != metamodel_n_features - 1:
+    metamodel_n_features = len(structure.mmodel.protocell.features)
+    if structure_n_features != metamodel_n_features:
         raise ValueError(
             "The number of features in the structure does not match the number of features in the metamodel."
         )
 
     # If no feature order is provided, use the order of the metamodel
     if feature_order is None:
-        the_features = structure.mmodel.proto_atom.unique_features.copy()
+        the_features = structure.mmodel.protocell.features.copy()
         feature_order = [a_feature.name for a_feature in the_features]
     else:
         feature_order = feature_order.copy()
-
-    # Move the wavelength to the first column
-    feature_order.insert(0, feature_order.pop(feature_order.index("wavelength")))
 
     new_order = []
     for key in feature_order:
@@ -1883,7 +1871,6 @@ def structure_to_field_1d_mmodel(
     batch_number = len(incidence.wavelength) * angles
 
     # Repeat the lambda_base to complete the batch
-    lambda_base = tf.math.real(lambda_base)
     lambda_base = tf.cast(incidence.wavelength, tf.float32)
     wave_repeated = tf.repeat(lambda_base, radius_size)
     wave_angle_repeated = tf.repeat(wave_repeated, [angles])
@@ -1901,14 +1888,16 @@ def structure_to_field_1d_mmodel(
     inputs = tf.gather(inputs, new_order, axis=0)
     # transpose the inputs to match the model
     inputs = tf.transpose(inputs)
-    outputs = structure.mmodel.trained_model(inputs)
+    outputs = structure.mmodel.model(inputs)
     # transpose back to the dim order
     outputs = tf.transpose(outputs)
+    tx, ty = outputs[0], outputs[1]
     # seperate the outputs into different wavelengths
-    outputs = tf.reshape(outputs, [batch_number, radius_size])
+    tx = tf.reshape(tx, [batch_number, radius_size])
+    ty = tf.reshape(ty, [batch_number, radius_size])
 
-    return propagation.Field1D(
-        tensor=outputs,
+    field_x = propagation.Field1D(
+        tensor=tx,
         n_pixels=radius_size * 2,
         wavelength=incidence.wavelength,
         theta=incidence.theta,
@@ -1918,6 +1907,20 @@ def structure_to_field_1d_mmodel(
         use_padding=use_padding,
         use_antialiasing=True,
     )
+
+    field_y = propagation.Field1D(
+        tensor=ty,
+        n_pixels=radius_size * 2,
+        wavelength=incidence.wavelength,
+        theta=incidence.theta,
+        phi=incidence.phi,
+        period=structure.period,
+        upsampling=1,
+        use_padding=use_padding,
+        use_antialiasing=True,
+    )
+
+    return field_x, field_y
 
 
 def structure_to_field_2d(
@@ -2046,7 +2049,6 @@ def initialize_1d_atom_array_metamodel(
     period: float,
     mmodel: modeling.Metamodel,
     set_structures_variable: bool = False,
-    exclude_wavelength: bool = True,
 ) -> AtomArray1D:
     """Initializes a 1D atom array.
 
@@ -2056,8 +2058,6 @@ def initialize_1d_atom_array_metamodel(
         mmmodel: the metamodel to use for the initialization.
         set_structures_variable: whether to set the structure as a
             variable or not.
-        exclude_wavelength: whether to exclude the wavelength from the
-            feature initialization.
 
     Returns:
         The initialized atom array.
@@ -2067,9 +2067,7 @@ def initialize_1d_atom_array_metamodel(
     tensor_columns = []
     clip_value_min = []
     clip_value_max = []
-    for feature in mmodel.proto_atom.unique_features:
-        if exclude_wavelength and feature.name == "wavelength":
-            continue
+    for feature in mmodel.protocell.features:
         vmin = [feature.vmin]
         vmax = [feature.vmax]
         clip_value_min.append(vmin)

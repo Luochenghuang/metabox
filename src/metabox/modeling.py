@@ -205,14 +205,15 @@ def create_fcc_model(
         layers.append(ComplexLayer())
 
     model = tf.keras.Sequential(layers)
+    optimizer.build(model.trainable_variables)
     model.compile(loss=euclidian_distance, optimizer=optimizer)
     return model
 
 
 @dataclasses.dataclass
 class Metamodel:
-    model_list: List[tf.keras.Sequential]
-    history_list: List[tf.keras.callbacks.History]
+    model: tf.keras.Sequential
+    history: tf.keras.callbacks.History
     protocell: rcwa.ProtoUnitCell
 
     def save(
@@ -231,11 +232,10 @@ class Metamodel:
         if not os.path.exists(new_folder):
             os.makedirs(new_folder)
 
-        model_path = os.path.join(new_folder, "tf_model{0}")
+        model_path = os.path.join(new_folder, "tf_model")
         pkl_path = os.path.join(new_folder, name + ".pkl")
         json_path = os.path.join(new_folder, "info.json")
-        self.model_list[0].save(model_path.format(0), overwrite=overwrite)
-        self.model_list[1].save(model_path.format(1), overwrite=overwrite)
+        self.model.save(model_path.format(0), overwrite=overwrite)
 
         if not overwrite:
             if os.path.exists(pkl_path):
@@ -244,7 +244,7 @@ class Metamodel:
         filehandler_pkl = open(pkl_path, "wb")
         with utils.suppress_stdout_stderr():
             new_self = copy.deepcopy(self)
-            del new_self.model_list
+            del new_self.model
             pickle.dump(new_self, filehandler_pkl)
         json_dict = dataclasses.asdict(self.protocell)
         for item in json_dict:
@@ -259,14 +259,13 @@ class Metamodel:
         """Plots the training history."""
         import matplotlib.pyplot as plt
 
-        for index, history in enumerate(self.history_list):
-            plt.plot(self.history_list[index].history["loss"])
-            plt.plot(self.history_list[index].history["val_loss"])
-            plt.title("{}Model Loss".format(["Tx", "Ty"][index]))
-            plt.ylabel("loss")
-            plt.xlabel("epoch")
-            plt.legend(["train", "test"], loc="upper left")
-            plt.show()
+        plt.plot(self.history.history["loss"])
+        plt.plot(self.history.history["val_loss"])
+        plt.title("Model Loss")
+        plt.ylabel("loss")
+        plt.xlabel("epoch")
+        plt.legend(["train", "test"], loc="upper left")
+        plt.show()
 
     def set_feature_constraint(
         self,
@@ -319,24 +318,21 @@ def load_metamodel(
         MetaModel: The loaded metamodel.
     """
     new_folder = os.path.join(save_dir, name)
-    model_path = os.path.join(new_folder, "tf_model{}")
+    model_path = os.path.join(new_folder, "tf_model")
     pkl_path = os.path.join(new_folder, name + ".pkl")
-    model_list = []
-    for i in range(2):
-        if not os.path.exists(pkl_path.format(i)):
-            raise ValueError("File does not exist.")
-        filehandler = open(pkl_path.format(i), "rb")
-        with utils.suppress_stdout_stderr():
-            my_model = pickle.load(filehandler)
-            model_list.append(tf.keras.models.load_model(model_path.format(i)))
-    my_model.model_list = model_list
+    if not os.path.exists(pkl_path):
+        raise ValueError("File does not exist.")
+    filehandler = open(pkl_path, "rb")
+    with utils.suppress_stdout_stderr():
+        my_model = pickle.load(filehandler)
+        my_model.model = tf.keras.models.load_model(model_path)
     return my_model
 
 
 def create_and_train_model(
     sim_lib: SimulationLibrary,
     n_epochs: int = 100,
-    optimizer: tf.keras.optimizers.Optimizer = tf.keras.optimizers.Adam(),
+    optimizer: tf.keras.optimizers.Optimizer = None,
     hidden_layer_units_list: List[int] = [64, 128, 256, 64],
     activation_list: List[str] = ["relu", "relu", "relu", "relu"],
     limit_output_to_unity: bool = False,
@@ -344,7 +340,7 @@ def create_and_train_model(
     validation_split: float = 0.05,
     verbose: int = 0,
 ) -> Tuple[tf.keras.Sequential, tf.keras.callbacks.History]:
-    """Fits a given model to the atom library.
+    """Creates and fits a given model to the atom library.
 
     Fits a fully connected network to the atom library. The network is
     a simple fully connected network with a normalization layer.
@@ -370,17 +366,18 @@ def create_and_train_model(
         raise ValueError(
             "The number of hidden layers must be equal to the number of activation functions."
         )
+    if optimizer is None:
+        optimizer = tf.keras.optimizers.Adam()
 
     train_input = sim_lib.get_training_x()
     train_output = sim_lib.get_training_y()
-    train_y_tx, train_y_ty = tf.split(train_output, 2, axis=1)
 
     normalizer = tf.keras.layers.Normalization(
         axis=-1, input_dim=train_input.shape[-1]
     )
     normalizer.adapt(train_input)
 
-    tx_model = create_fcc_model(
+    model = create_fcc_model(
         normalizer=normalizer,
         optimizer=optimizer,
         hidden_layer_units_list=hidden_layer_units_list,
@@ -388,19 +385,8 @@ def create_and_train_model(
         limit_output_to_unity=limit_output_to_unity,
     )
 
-    ty_model = tf.keras.models.clone_model(tx_model)
-
-    # Train the Tx and Ty seperately
-    tx_history = tx_model.fit(
-        train_input.astype(np.float32),
-        train_output.astype(np.complex64),
-        validation_split=validation_split,
-        verbose=verbose,
-        epochs=n_epochs,
-        batch_size=train_batch_size,
-        callbacks=[TqdmCallback(verbose=1)],
-    )
-    ty_history = tx_model.fit(
+    # Train the model seperately
+    history = model.fit(
         train_input.astype(np.float32),
         train_output.astype(np.complex64),
         validation_split=validation_split,
@@ -411,8 +397,8 @@ def create_and_train_model(
     )
 
     return Metamodel(
-        model_list=[tx_model, ty_model],
-        history_list=[tx_history, ty_history],
+        model=model,
+        history=history,
         protocell=sim_lib.protocell,
     )
 
