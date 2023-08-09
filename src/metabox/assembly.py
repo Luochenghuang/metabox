@@ -1884,14 +1884,16 @@ def structure_to_field_1d_mmodel(
     # TODO: make the float position a parameter.
     inputs = tf.math.real(inputs)
     inputs = tf.cast(inputs, tf.float32)
-    # reorder the inputs
-    inputs = tf.gather(inputs, new_order, axis=0)
     # transpose the inputs to match the model
     inputs = tf.transpose(inputs)
     outputs = structure.mmodel.model(inputs)
     # transpose back to the dim order
     outputs = tf.transpose(outputs)
-    tx, ty = outputs[0], outputs[1]
+    # avoid slicing, which kills the gradient
+    x_vec = tf.cast([[1.0], [0.0]], tf.complex64)
+    y_vec = tf.cast([[0.0], [1.0]], tf.complex64)
+    tx = tf.reduce_sum(outputs * x_vec, axis=0)
+    ty = tf.reduce_sum(outputs * y_vec, axis=0)
     # seperate the outputs into different wavelengths
     tx = tf.reshape(tx, [batch_number, radius_size])
     ty = tf.reshape(ty, [batch_number, radius_size])
