@@ -106,9 +106,7 @@ def sample_protocell(
     for feature in features:
         if feature.sampling is None:
             raise ValueError(f"Feature {feature.name} has no sampling value.")
-        uniform_sampling = np.linspace(
-            feature.vmin, feature.vmax, feature.sampling
-        )
+        uniform_sampling = np.linspace(feature.vmin, feature.vmax, feature.sampling)
         sampling_values_per_feature.append(uniform_sampling)
     # create permutations of the sampling values
     feature_values = list(itertools.product(*sampling_values_per_feature))
@@ -215,6 +213,7 @@ class Metamodel:
     model: tf.keras.Sequential
     history: tf.keras.callbacks.History
     protocell: rcwa.ProtoUnitCell
+    sim_config: dict
 
     def save(
         self,
@@ -372,9 +371,7 @@ def create_and_train_model(
     train_input = sim_lib.get_training_x()
     train_output = sim_lib.get_training_y()
 
-    normalizer = tf.keras.layers.Normalization(
-        axis=-1, input_dim=train_input.shape[-1]
-    )
+    normalizer = tf.keras.layers.Normalization(axis=-1, input_dim=train_input.shape[-1])
     normalizer.adapt(train_input)
 
     model = create_fcc_model(
@@ -400,6 +397,7 @@ def create_and_train_model(
         model=model,
         history=history,
         protocell=sim_lib.protocell,
+        sim_config=sim_lib.sim_config,
     )
 
 
@@ -429,9 +427,7 @@ def save_simulation_library(
     pickle.dump(sim_lib, filehandler_pkl)
     json_dict = dataclasses.asdict(sim_lib)
     for item in json_dict:
-        json_dict[item] = utils.recursively_convert_ndarray_in_dict_to_list(
-            item
-        )
+        json_dict[item] = utils.recursively_convert_ndarray_in_dict_to_list(item)
         if np.any(np.iscomplex(json_dict[item])):
             json_dict[item] = str(json_dict[item])
     json_d = json.dumps(json_dict, indent=4)

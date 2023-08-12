@@ -10,66 +10,7 @@ import gdspy
 import numpy as np
 import tensorflow as tf
 
-from metabox import assemly, atom, expansion, rcwa
-
-
-def gen_unit_cell_square(this_atom: atom.SquarePillar):
-    """Generates a unit cell for a square-shaped meta-atom.
-
-    Args:
-        this_atom: the meta-atom.
-
-    Returns:
-        gdspy.Rectangle: the unit cell.
-    """
-    if not isinstance(this_atom, atom.SquarePillar):
-        raise TypeError("The atom type '{}' is not supported.".format(type(this_atom)))
-    a = this_atom.pillar_width * 1e6
-    return gdspy.Rectangle((-a / 2, -a / 2), (a / 2, a / 2))
-
-
-def gen_unit_cell_cross(this_atom: atom.CrossPillar):
-    """Generates a unit cell for a cross-shaped meta-atom.
-
-    Args:
-        this_atom: the meta-atom.
-
-    Returns:
-        gdspy.Polygon: the unit cell.
-    """
-
-    aa = this_atom.aa * 1e6
-    bb = this_atom.bb * 1e6
-    cc = this_atom.cc * 1e6
-    dd = this_atom.dd * 1e6
-
-    # units in gdspy are in microns
-
-    vertices = (
-        (bb / 2.0, cc / 2.0),
-        (dd / 2.0, cc / 2.0),
-        (dd / 2.0, aa / 2.0),
-        (-dd / 2.0, aa / 2.0),
-        (-dd / 2.0, cc / 2.0),
-        (-bb / 2.0, cc / 2.0),
-        (-bb / 2.0, -cc / 2.0),
-        (-dd / 2.0, -cc / 2.0),
-        (-dd / 2.0, -aa / 2.0),
-        (dd / 2.0, -aa / 2.0),
-        (dd / 2.0, -cc / 2.0),
-        (bb / 2.0, -cc / 2.0),
-    )
-    return gdspy.Polygon(vertices)
-
-
-def gen_unit_cell(the_atom):
-    """Generates unit cell from any meta-atom."""
-    if isinstance(the_atom, atom.SquarePillar):
-        return gen_unit_cell_square(the_atom)
-    elif isinstance(the_atom, atom.CrossPillar):
-        return gen_unit_cell_cross(the_atom)
-    else:
-        raise TypeError("The atom type '{}' is not supported.".format(type(the_atom)))
+from metabox import assembly, expansion, rcwa
 
 
 def unit_cell_to_gds_shape(cell: rcwa.UnitCell, layer: int = 0):
@@ -309,11 +250,19 @@ def generate_gds_new(
     r2c_basis = expansion.radius_to_circle_basis(n_pixels_radial)
     r2c_basis = tf.cast(r2c_basis, tf.float64)
     dummy_incidence = assembly.Incidence(wavelength=1.0, theta=[0], phi=[0])
-    cell_array = (
-        metasurface.atom_1d.proto_unit_cell.generate_cells_from_parameter_tensor(
-            metasurface.atom_1d.tensor
+    if metasurface.atom_1d.use_mmodel:
+        cell_array = (
+            metasurface.atom_1d.mmodel.protocell.generate_cells_from_parameter_tensor(
+                metasurface.atom_1d.tensor
+            )
         )
-    )
+    else:
+        cell_array = (
+            metasurface.atom_1d.proto_unit_cell.generate_cells_from_parameter_tensor(
+                metasurface.atom_1d.tensor
+            )
+        )
+    cell_array = cell_array
     for radial_ix, this_cell in enumerate(cell_array):
         polygon = unit_cell_to_gds_shape(this_cell)
         if inverted:
@@ -321,7 +270,10 @@ def generate_gds_new(
             box = gdspy.Rectangle([-box_hw, -box_hw], [box_hw, box_hw])
             polygon = gdspy.boolean(box, polygon, "not")
         cell = lib.new_cell(str(radial_ix))
-        cell.add(polygon)
+        try:
+            cell.add(polygon)
+        except:
+            continue
         locations_along_circle = get_loc_along_circle(
             radius_in_meters,
             n_pixels_radial,
@@ -337,4 +289,4 @@ def generate_gds_new(
     # save the GDSII file
     if not os.path.exists(export_directory):
         os.makedirs(export_directory)
-    lib.write_gds("{}/{}.gds".format(export_directory, export_name))
+    lib.write_gds("{0}/{1}.gds".format(export_directory, export_name))

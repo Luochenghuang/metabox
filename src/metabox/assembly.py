@@ -1,17 +1,11 @@
 """
 Defines a lens assembly and functionalities for simualting the performances of the lens assembly.
 """
-import copy
-import dataclasses
-import enum
-import itertools
-import logging
-import dill
+import copy, os, dataclasses, enum, itertools, logging, dill, tqdm
 from typing import List, Tuple, Union
 
 import numpy as np
 import tensorflow as tf
-import tqdm
 from matplotlib.ticker import EngFormatter
 
 from metabox import (
@@ -174,6 +168,22 @@ class AtomArray2D:
             plt.colorbar(mappable=im, cax=cax)
             plt.show()
 
+    def set_to_use_rcwa(self):
+        """Skips the metamodel and directly simulate the atom array using RCWA.
+
+        Note that this method will change the atom array permanently.
+        This method is useful for verifying the performance of the metamodel.
+        """
+        if not self.use_mmodel:
+            print("The atom array is already using RCWA simulation directly.")
+            return
+        metamodel = self.mmodel
+        protocell = metamodel.protocell
+        self.proto_unit_cell = protocell
+        self.use_mmodel = False
+        self.cached_fields = None
+        self.sim_config = metamodel.sim_config
+
 
 @dataclasses.dataclass
 class AtomArray1D:
@@ -248,27 +258,11 @@ class AtomArray1D:
 
     def get_atom_array(self, incidence: "Incidence") -> List[rcwa.UnitCell]:
         """Returns the batched atom array with shape (n_batch, n_atoms)."""
-        wavelengths = np.repeat(
-            incidence.wavelength,
-            np.size(incidence.theta) * np.size(incidence.phi),
-        )
-
-        batch_array = []
-        for wavelength in wavelengths:
-            atom_array = []
-            for index in range(self.tensor.shape[-1]):
-                this_atom = copy.deepcopy(self.mmodel.protocell)
-                parameters = copy.deepcopy(self.tensor[:, index].numpy().tolist())
-
-                # sample features
-                feature_values_list = []
-                for _ in this_atom.unique_features:
-                    feature_values_list.append(parameters.pop(0))
-
-                new_atom = this_atom.gen_atom_from_values(feature_values_list)
-                atom_array.append(new_atom)
-            batch_array.append(atom_array)
-        return batch_array
+        if self.use_mmodel:
+            return self.mmodel.protocell.generate_cells_from_parameter_tensor(
+                self.tensor
+            )
+        return self.proto_unit_cell.generate_cells_from_parameter_tensor(self.tensor)
 
     def get_feature_map(self, feature: str) -> np.ndarray:
         """Returns the 2D feature array.
@@ -319,6 +313,22 @@ class AtomArray1D:
                 Shows all features if None.
         """
         self.expand_to_2d().show_features(only_feature)
+
+    def set_to_use_rcwa(self):
+        """Skips the metamodel and directly simulate the atom array using RCWA.
+
+        Note that this method will change the atom array permanently.
+        This method is useful for verifying the performance of the metamodel.
+        """
+        if not self.use_mmodel:
+            print("The atom array is already using RCWA simulation directly.")
+            return
+        metamodel = self.mmodel
+        protocell = metamodel.protocell
+        self.proto_unit_cell = protocell
+        self.use_mmodel = False
+        self.cached_fields = None
+        self.sim_config = metamodel.sim_config
 
 
 @dataclasses.dataclass
@@ -1225,6 +1235,13 @@ class Metasurface(Surface):
         else:
             self.atom_2d.cached_fields = None
 
+    def set_to_use_rcwa(self):
+        """Set to use RCWA for the metasurface, permanently."""
+        if self.use_circular_expansions:
+            self.atom_1d.set_to_use_rcwa()
+        else:
+            self.atom_2d.set_to_use_rcwa()
+
 
 @enum.unique
 class FigureOfMerit(enum.Enum):
@@ -1430,6 +1447,17 @@ class LensAssembly:
         for surface in self.surfaces:
             surface.optimizer_hook()
 
+    def set_to_use_rcwa(self):
+        """Use RCWA simulation for all the metasurfaces, permanently.
+
+        Note that this function will permanently change the metasurfaces to use
+        RCWA simulation. It's wise to save the lens assembly before calling this
+        function. Or make a copy of the lens assembly before calling this.
+        """
+        for surface in self.surfaces:
+            if isinstance(surface, Metasurface):
+                surface.set_to_use_rcwa()
+
 
 def copy_lens_assembly(lens_assembly: LensAssembly) -> LensAssembly:
     """Returns a copy of the lens assembly.
@@ -1441,8 +1469,8 @@ def copy_lens_assembly(lens_assembly: LensAssembly) -> LensAssembly:
         LensAssembly: the copy of the lens assembly.
     """
     with utils.suppress_stdout_stderr():
-        save_lens_assembly(lens_assembly, "temp", overwrite=True)
-        return load_lens_assembly("temp")
+        save_lens_assembly(lens_assembly, "temp", "./", overwrite=True)
+        return load_lens_assembly("temp", "./")
 
 
 def save_lens_assembly(
