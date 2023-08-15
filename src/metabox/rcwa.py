@@ -656,17 +656,22 @@ class Material:
             self.max_wl_k = max(self.wl_k)
 
         self.n_interp = interpolate.interp1d(self.wl_n, self.n)
+
         if len(self.wl_k) > 0:
             self.k_interp = interpolate.interp1d(self.wl_k, self.k)
-        else:
-            self.k_interp = lambda x: 0j
 
     def index_at(self, wavelength):
         """Returns the refractive index at the given wavelength."""
         if not (self.min_wl_n <= wavelength <= self.max_wl_n):
             raise ValueError(f"Wavelength {wavelength} is out of range.")
 
-        return self.n_interp(wavelength) + 1.0j * self.k_interp(wavelength)
+        n_value = self.n_interp(wavelength)
+        if hasattr(self, 'k_interp') and self.k_interp is not None:
+            k_value = self.k_interp(wavelength)
+        else:
+            k_value = 0j
+
+        return n_value + 1.0j * k_value
 
 
 @dataclasses.dataclass
