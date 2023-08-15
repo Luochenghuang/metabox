@@ -42,9 +42,13 @@ class AtomArray2D:
         has_mmodel = self.mmodel is not None
         has_unit_cell = self.proto_unit_cell is not None
         if has_mmodel and has_unit_cell:
-            raise ValueError("Cannot have both a mmodel and a parameterized unit cell.")
+            raise ValueError(
+                "Cannot have both a mmodel and a parameterized unit cell."
+            )
         if not has_mmodel and not has_unit_cell:
-            raise ValueError("Must have either a mmodel or a parameterized unit cell.")
+            raise ValueError(
+                "Must have either a mmodel or a parameterized unit cell."
+            )
         self.use_mmodel = has_mmodel
         self.cached_fields = None
 
@@ -134,7 +138,9 @@ class AtomArray2D:
         n_pixels = int(np.sqrt(self.tensor.shape[-1]))
         diameter = self.period * n_pixels
         radius = diameter / 2.0
-        features_with_wavelength = copy.deepcopy(self.mmodel.protocell.features)
+        features_with_wavelength = copy.deepcopy(
+            self.mmodel.protocell.features
+        )
         features_with_wavelength = [
             feature.name for feature in features_with_wavelength
         ]
@@ -145,7 +151,9 @@ class AtomArray2D:
         if only_feature is not None:
             if not only_feature in features_with_wavelength:
                 raise ValueError(
-                    "Feature {} not found in the atom array.".format(only_feature)
+                    "Feature {} not found in the atom array.".format(
+                        only_feature
+                    )
                 )
             all_features = [only_feature]
 
@@ -153,7 +161,9 @@ class AtomArray2D:
             feature_array = self.get_feature_map(all_features[i])
             f = plt.figure(figsize=(5, 5), dpi=100)
             ax = plt.axes([0, 0.05, 0.9, 0.9])
-            im = ax.imshow(feature_array, extent=[-radius, radius, -radius, radius])
+            im = ax.imshow(
+                feature_array, extent=[-radius, radius, -radius, radius]
+            )
             formatter0 = EngFormatter(unit="m")
             ax.xaxis.set_major_formatter(formatter0)
             ax.yaxis.set_major_formatter(formatter0)
@@ -206,9 +216,13 @@ class AtomArray1D:
         has_mmodel = self.mmodel is not None
         has_unit_cell = self.proto_unit_cell is not None
         if has_mmodel and has_unit_cell:
-            raise ValueError("Cannot have both a mmodel and a parameterized unit cell.")
+            raise ValueError(
+                "Cannot have both a mmodel and a parameterized unit cell."
+            )
         if not has_mmodel and not has_unit_cell:
-            raise ValueError("Must have either a mmodel or a parameterized unit cell.")
+            raise ValueError(
+                "Must have either a mmodel or a parameterized unit cell."
+            )
         self.use_mmodel = has_mmodel
         self.cached_fields = None
 
@@ -262,7 +276,9 @@ class AtomArray1D:
             return self.mmodel.protocell.generate_cells_from_parameter_tensor(
                 self.tensor
             )
-        return self.proto_unit_cell.generate_cells_from_parameter_tensor(self.tensor)
+        return self.proto_unit_cell.generate_cells_from_parameter_tensor(
+            self.tensor
+        )
 
     def get_feature_map(self, feature: str) -> np.ndarray:
         """Returns the 2D feature array.
@@ -392,9 +408,13 @@ class Aperture(Surface):
             if (
                 radius is None
             ):  # use the smallest distance between the center and image walls
-                radius = min(center[0], center[1], w - center[0], h - center[1])
+                radius = min(
+                    center[0], center[1], w - center[0], h - center[1]
+                )
             Y, X = np.ogrid[:h, :w]
-            dist_from_center = np.sqrt((X - center[0]) ** 2 + (Y - center[1]) ** 2)
+            dist_from_center = np.sqrt(
+                (X - center[0]) ** 2 + (Y - center[1]) ** 2
+            )
             mask = dist_from_center <= radius
             return mask
 
@@ -418,7 +438,9 @@ class Aperture(Surface):
 
         # Repeat the tensor to match the batch size
         batch_size = (
-            len(incidence.wavelength) * len(incidence.theta) * len(incidence.phi)
+            len(incidence.wavelength)
+            * len(incidence.theta)
+            * len(incidence.phi)
         )
         return tf.repeat(self.mask, batch_size, axis=0)
 
@@ -465,7 +487,7 @@ class Aperture(Surface):
             return mod_field
 
         if self.enable_propagator_cache:
-            if incidence != self.propagator_cache[0]:
+            if np.any(incidence != self.propagator_cache[0]):
                 propagator = propagation.get_transfer_function(
                     field_like=mod_field,
                     ref_idx=self.refractive_index,
@@ -557,14 +579,18 @@ class AmplitudeMask(Surface):
         Returns:
             tf.Tensor: the modulation field with shape (batch_size, n_pixels, n_pixels)
         """
-        new_tensor = expansion.expand_to_2d(self.coeff_1d[tf.newaxis, :], "basis_data")
+        new_tensor = expansion.expand_to_2d(
+            self.coeff_1d[tf.newaxis, :], "basis_data"
+        )
         # Apply the thresholding
         new_tensor = self.threshold_param * new_tensor
         new_tensor = tf.math.sigmoid(new_tensor)
 
         # Repeat the tensor to match the batch size
         batch_size = (
-            len(incidence.wavelength) * len(incidence.theta) * len(incidence.phi)
+            len(incidence.wavelength)
+            * len(incidence.theta)
+            * len(incidence.phi)
         )
         new_tensor = tf.repeat(new_tensor, batch_size, axis=0)
         return new_tensor
@@ -612,7 +638,7 @@ class AmplitudeMask(Surface):
             return mod_field
 
         if self.enable_propagator_cache:
-            if incidence != self.propagator_cache[0]:
+            if np.any(incidence != self.propagator_cache[0]):
                 propagator = propagation.get_transfer_function(
                     field_like=mod_field,
                     ref_idx=self.refractive_index,
@@ -735,7 +761,9 @@ class RefractiveEvenAsphere(Surface):
     def get_penalty(self):
         """Returns the penalty of the surface. This is used for the optimizer."""
         max_thickness = tf.abs(tf.reduce_max(self.get_sag()))
-        return tf.math.log(max_thickness + 1e-12) * self.thickness_penalty_coeff
+        return (
+            tf.math.log(max_thickness + 1e-12) * self.thickness_penalty_coeff
+        )
 
     def show_sag(self):
         sag = self.get_sag()
@@ -777,7 +805,9 @@ class RefractiveEvenAsphere(Surface):
         """
         sag = self.get_sag()
         batch_size = (
-            len(incidence.theta) * len(incidence.phi) * len(incidence.wavelength)
+            len(incidence.theta)
+            * len(incidence.phi)
+            * len(incidence.wavelength)
         )
         sag = tf.repeat(sag[tf.newaxis, :], batch_size, axis=0)
         wavelength = tf.convert_to_tensor(
@@ -841,7 +871,7 @@ class RefractiveEvenAsphere(Surface):
             return field_2d
 
         if self.enable_propagator_cache:
-            if incidence != self.propagator_cache[0]:
+            if np.any(incidence != self.propagator_cache[0]):
                 propagator = propagation.get_transfer_function(
                     field_like=field_2d,
                     ref_idx=self.refractive_index,
@@ -929,7 +959,9 @@ class Binary2(Surface):
             phi += A_i * tf.pow(rho, 2 * (i + 1))
         phi = self.diffraction_order * phi
         batch_size = (
-            len(incidence.theta) * len(incidence.phi) * len(incidence.wavelength)
+            len(incidence.theta)
+            * len(incidence.phi)
+            * len(incidence.wavelength)
         )
         phi = tf.repeat(phi[tf.newaxis, :], batch_size, axis=0)
         phi = tf.cast(phi, dtype=tf.complex64)
@@ -980,7 +1012,7 @@ class Binary2(Surface):
             return field_2d
 
         if self.enable_propagator_cache:
-            if incidence != self.propagator_cache[0]:
+            if np.any(incidence != self.propagator_cache[0]):
                 propagator = propagation.get_transfer_function(
                     field_like=field_2d,
                     ref_idx=self.refractive_index,
@@ -1061,9 +1093,13 @@ class Metasurface(Surface):
         )
         self.use_metamodel = has_metamodel
         if self.use_metamodel:
-            self.periodicity = self.metamodel.protocell.proto_unit_cell.periodicity[0]
+            self.periodicity = (
+                self.metamodel.protocell.proto_unit_cell.periodicity[0]
+            )
         else:
-            self.periodicity = self.proto_unit_cell.proto_unit_cell.periodicity[0]
+            self.periodicity = (
+                self.proto_unit_cell.proto_unit_cell.periodicity[0]
+            )
         self.n_pixels_radial = int(self.diameter / 2 / self.periodicity)
 
         if self.use_metamodel:
@@ -1170,7 +1206,7 @@ class Metasurface(Surface):
             return field_2d
 
         if self.enable_propagator_cache:
-            if incidence != self.propagator_cache[0]:
+            if np.any(incidence != self.propagator_cache[0]):
                 propagator = propagation.get_transfer_function(
                     field_like=field_2d,
                     ref_idx=self.refractive_index,
@@ -1230,10 +1266,7 @@ class Metasurface(Surface):
             self.atom_2d.show_feature_map(only_feature=only_feature)
 
     def optimizer_hook(self):
-        if self.use_circular_expansions:
-            self.atom_1d.cached_fields = None
-        else:
-            self.atom_2d.cached_fields = None
+        self.clear_cache()
 
     def set_to_use_rcwa(self):
         """Set to use RCWA for the metasurface, permanently."""
@@ -1241,6 +1274,13 @@ class Metasurface(Surface):
             self.atom_1d.set_to_use_rcwa()
         else:
             self.atom_2d.set_to_use_rcwa()
+
+    def clear_cache(self):
+        """Clears the saved fields."""
+        if self.use_circular_expansions:
+            self.atom_1d.cached_fields = None
+        else:
+            self.atom_2d.cached_fields = None
 
 
 @enum.unique
@@ -1320,7 +1360,9 @@ class LensAssembly:
 
     def compute_field_on_sensor(self):
         """Computes the Strehl ratio of the lens assembly."""
-        current_field = propagation.get_incident_field_2d(self.field_properties)
+        current_field = propagation.get_incident_field_2d(
+            self.field_properties
+        )
         for idx, surface in enumerate(self.surfaces):
             if idx == len(self.surfaces) - 1:
                 lateral_shift = None  # for the last surface
@@ -1330,7 +1372,9 @@ class LensAssembly:
             if idx == 0:
                 previous_refractive_index = 1.0
             else:
-                previous_refractive_index = self.surfaces[idx - 1].refractive_index
+                previous_refractive_index = self.surfaces[
+                    idx - 1
+                ].refractive_index
 
             # Cascading the fields
             current_field = surface.get_end_field(
@@ -1343,7 +1387,9 @@ class LensAssembly:
             )
         return current_field
 
-    def show_psf(self, use_wavelength_average: bool = False, crop_factor: float = 1.0):
+    def show_psf(
+        self, use_wavelength_average: bool = False, crop_factor: float = 1.0
+    ):
         """Displays the point spread function of the lens assembly.
 
         Args:
@@ -1355,7 +1401,10 @@ class LensAssembly:
                 crop_factor=crop_factor
             )
         else:
-            self.compute_field_on_sensor().show_intensity(crop_factor=crop_factor)
+            self.compute_field_on_sensor().show_intensity(
+                crop_factor=crop_factor
+            )
+        self.clear_cache()
 
     def wavelength_average_psf(self):
         """Displays the wavelength averaged point spread function of the lens assembly."""
@@ -1391,7 +1440,9 @@ class LensAssembly:
         if self.figure_of_merit is None:
             raise ValueError("No figure of merit defined.")
         elif self.figure_of_merit not in FigureOfMerit:
-            raise ValueError(f"Invalid figure of merit {self.figure_of_merit}.")
+            raise ValueError(
+                f"Invalid figure of merit {self.figure_of_merit}."
+            )
 
         elif self.figure_of_merit == FigureOfMerit.STREHL_RATIO:
             return tf.reduce_mean(self.compute_strehl_ratio())
@@ -1406,7 +1457,9 @@ class LensAssembly:
         elif self.figure_of_merit == FigureOfMerit.LOG_CENTER_INTENSITY:
             return tf.reduce_mean(tf.math.log(self.compute_center_intensity()))
         else:
-            raise ValueError("Invalid figure of merit. This should never happen.")
+            raise ValueError(
+                "Invalid figure of merit. This should never happen."
+            )
 
     def compute_penalty(self) -> tf.Tensor:
         """Computes the penalty of the lens assembly.
@@ -1457,6 +1510,12 @@ class LensAssembly:
         for surface in self.surfaces:
             if isinstance(surface, Metasurface):
                 surface.set_to_use_rcwa()
+
+    def clear_cache(self):
+        """Clears saved fields."""
+        for surface in self.surfaces:
+            if type(surface) is Metasurface:
+                surface.clear_cache()
 
 
 def copy_lens_assembly(lens_assembly: LensAssembly) -> LensAssembly:
@@ -1519,7 +1578,9 @@ def save_lens_assembly(
                 continue
             if not surface.use_metamodel:
                 continue
-            surface.metamodel.save(f"surface_{i}_metamodel", save_path, overwrite)
+            surface.metamodel.save(
+                f"surface_{i}_metamodel", save_path, overwrite
+            )
 
 
 def load_lens_assembly(
@@ -1640,7 +1701,9 @@ def optimize_multiple_lens_assemblies(
     # check that all lens assemblies have the same variables
     for lens_assembly in lens_assembly_arr:
         if not np.all(lens_assembly.get_variables() == variables):
-            raise ValueError("Not all lens assemblies have the same variables.")
+            raise ValueError(
+                "Not all lens assemblies have the same variables."
+            )
     loss_history = []
 
     lowest_loss = np.inf
@@ -1670,7 +1733,9 @@ def optimize_multiple_lens_assemblies(
             else:
                 batch_grads = [
                     batch_grad + single_grad
-                    for batch_grad, single_grad in zip(batch_grads, single_grads)
+                    for batch_grad, single_grad in zip(
+                        batch_grads, single_grads
+                    )
                 ]
 
             # record the loss
@@ -1764,7 +1829,6 @@ def unbatch_lens_assembley(
             surfaces=lens_assembly.surfaces,
             incidence=incidence,
             aperture_stop_index=lens_assembly.aperture_stop_index,
-            upsampling=lens_assembly.upsampling,
             figure_of_merit=lens_assembly.figure_of_merit,
             use_antialiasing=lens_assembly.use_antialiasing,
             use_padding=lens_assembly.use_padding,
@@ -2104,7 +2168,9 @@ def initialize_1d_atom_array_metamodel(
         clip_value_max.append(vmax)
         tensor_columns.append(tf.random.uniform([n_pixels_radial], vmin, vmax))
     tensor = tf.stack(tensor_columns, axis=0)
-    constraint_func = lambda x: tf.clip_by_value(x, clip_value_min, clip_value_max)
+    constraint_func = lambda x: tf.clip_by_value(
+        x, clip_value_min, clip_value_max
+    )
 
     if set_structures_variable:
         tensor = tf.Variable(tensor, constraint=constraint_func)
