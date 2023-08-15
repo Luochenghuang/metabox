@@ -1,4 +1,4 @@
-import os, tqdm, copy, dataclasses, gc, warnings, logging
+import os, csv, tqdm, copy, dataclasses, gc, warnings, logging
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 from typing import Any, Dict, List, Tuple, Union
@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Tuple, Union
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+from scipy import interpolate
 
 from metabox import raster, rcwa_tf, utils
 from metabox.utils import CoordType, Feature, Incidence, ParameterType
@@ -48,16 +49,12 @@ class Parameterizable:
 
     def initialize_values(
         self,
-        value_assignment: Union[
-            None, Tuple[List[Feature], List[float]]
-        ] = None,
+        value_assignment: Union[None, Tuple[List[Feature], List[float]]] = None,
     ) -> None:
         """Initializes the variables."""
         if value_assignment is not None:
             if len(value_assignment) != 2:
-                raise ValueError(
-                    "value_assignment must be a tuple of length 2."
-                )
+                raise ValueError("value_assignment must be a tuple of length 2.")
             elif len(value_assignment[0]) != len(value_assignment[1]):
                 raise ValueError(
                     "value_assignment must be a tuple of lists of equal length."
@@ -102,10 +99,10 @@ class Shape(Parameterizable):
     """Defines a shape.
 
     Args:
-        index: the ref. index of the shape.
+        material: the `Material` or the ref. index of the shape.
     """
 
-    index: ParameterType
+    material: Union[ParameterType, None]
 
     def __post_init__(self):
         return super().__init__()
@@ -116,7 +113,7 @@ class Polygon(Shape):
     """Defines a polygon.
 
     Args:
-        index: the ref. index of the shape.
+        material: the `Material` or the ref. index of the shape.
         vertices: the vertices of the polygon. List of (x, y) coordinates.
             Example_0: [(0, 0), (1, 0), (1, 1), (0, 1)]
             Example_1:
@@ -131,13 +128,20 @@ class Polygon(Shape):
             raise ValueError("A polygon must have at least 3 vertices.")
         for vertex in self.vertices:
             if len(vertex) != 2:
-                raise ValueError(
-                    "Each vertex must be a tuple of (x, y) coordinates."
-                )
+                raise ValueError("Each vertex must be a tuple of (x, y) coordinates.")
         return super().__post_init__()
 
-    def get_shape(self):
-        return raster.Polygon(value=self.index, points=self.vertices)
+    def get_shape(self, wavelength: Union[float, None] = None):
+        if type(self.material) is Material:
+            if wavelength is None:
+                raise ValueError(
+                    "The wavelength must be given to rasterize a polygon with "
+                    "a Material index."
+                )
+            value = self.material.index_at(wavelength)
+        else:
+            value = self.material
+        return raster.Polygon(value=value, points=self.vertices)
 
     def get_vertices(self):
         """Returns the vertices of the polygon."""
@@ -149,7 +153,7 @@ class Rectangle(Shape):
     """Defines a rectangle.
 
     Args:
-        index: the ref. index of the shape.
+        material: the ref. index of the shape.
         x_width: the width of the rectangle in the x direction.
         y_width: the width of the rectangle in the y direction.
         x_pos: the x position of the rectangle. Default: 0
@@ -169,9 +173,18 @@ class Rectangle(Shape):
     def __post_init__(self):
         return super().__post_init__()
 
-    def get_shape(self):
+    def get_shape(self, wavelength: Union[float, None] = None):
+        if type(self.material) is Material:
+            if wavelength is None:
+                raise ValueError(
+                    "The wavelength must be given to rasterize a rectangle with "
+                    "a Material index."
+                )
+            value = self.material.index_at(wavelength)
+        else:
+            value = self.material
         return raster.Rectangle(
-            value=self.index,
+            value=value,
             center=(self.x_pos, self.y_pos),
             x_width=self.x_width,
             y_width=self.y_width,
@@ -193,7 +206,7 @@ class Circle(Shape):
     """Defines a circle.
 
     Args:
-        index: the ref. index of the shape.
+        material: the ref. index of the shape.
         radius: the radius of the circle.
         center: the center of the circle. A tuple of (x, y) coordinates.
             Default: (0, 0)
@@ -206,9 +219,18 @@ class Circle(Shape):
     def __post_init__(self):
         return super().__post_init__()
 
-    def get_shape(self):
+    def get_shape(self, wavelength: Union[float, None] = None):
+        if type(self.material) is Material:
+            if wavelength is None:
+                raise ValueError(
+                    "The wavelength must be given to rasterize a circle with "
+                    "a Material index."
+                )
+            value = self.material.index_at(wavelength)
+        else:
+            value = self.material
         return raster.Circle(
-            value=self.index,
+            value=value,
             center=(self.x_pos, self.y_pos),
             radius=self.radius,
         )
@@ -251,13 +273,13 @@ class Layer(Parameterizable):
     """Defines a layer.
 
     Args:
-        index: the ref. index of the layer.
+        material: the ref. index of the shape.
         thickness: the thickness of the layer in meters.
         shapes: the shapes of the layer. Tuple of Shape objects.
             Default: ()
     """
 
-    index: Union[Feature, float]
+    material: Union[Feature, float, "Material"]
     thickness: Union[Feature, float]
     shapes: Tuple[Shape] = ()
     enforce_4fold_symmetry: bool = False
@@ -265,18 +287,16 @@ class Layer(Parameterizable):
     def __post_init__(self):
         Parameterizable.__init__(self)
 
-    def get_shapes(self):
+    def get_shapes(self, wavelength: Union[float, None] = None):
         """Returns the shapes of the layer."""
         shapes = []
         for shape in self.shapes:
-            shapes.append(shape.get_shape())
+            shapes.append(shape.get_shape(wavelength))
         return shapes
 
     def initialize_values(
         self,
-        value_assignment: Union[
-            None, Tuple[List[Feature], List[float]]
-        ] = None,
+        value_assignment: Union[None, Tuple[List[Feature], List[float]]] = None,
     ) -> None:
         """Initializes the layer variables."""
         super().initialize_values(value_assignment)
@@ -324,15 +344,11 @@ class UnitCell(Parameterizable):
     def __post_init__(self):
         super().__init__()
         if len(self.periodicity) != 2:
-            raise ValueError(
-                "The periodicity must be a tuple of (x, y) in meters."
-            )
+            raise ValueError("The periodicity must be a tuple of (x, y) in meters.")
 
     def initialize_values(
         self,
-        value_assignment: Union[
-            None, Tuple[List[Feature], List[float]]
-        ] = None,
+        value_assignment: Union[None, Tuple[List[Feature], List[float]]] = None,
     ) -> None:
         """Initializes the layer variables."""
         super().initialize_values(value_assignment)
@@ -359,7 +375,7 @@ class UnitCell(Parameterizable):
                     variables.append(feature.value)
         return variables
 
-    def get_epsilon(self, x_resolution: int):
+    def get_epsilon(self, x_resolution: int, wavelength: float) -> tf.Tensor:
         """Returns the permittivity of the unit cell.
 
         Args:
@@ -371,15 +387,17 @@ class UnitCell(Parameterizable):
         pixel_density = self.periodicity[0] / float(x_resolution)
         epsilon_all = []
         for layer in self.layers:
-            epsilon_all.append(
+            epsilon_layer = (
                 _rasterize_layer(
                     layer=layer,
                     periodicity=self.periodicity,
                     pixel_density=pixel_density,
                     enforce_4fold_symmetry=layer.enforce_4fold_symmetry,
+                    wavelength=wavelength,
                 )
                 ** 2
             )
+            epsilon_all.append(tf.cast(epsilon_layer, tf.complex64))
         epsilon_all = tf.cast(epsilon_all, tf.complex64)
         return tf.stack(epsilon_all, axis=0)
 
@@ -398,9 +416,7 @@ class UnitCell(Parameterizable):
         raise ValueError("Feature not found.")
 
 
-def _replace_this_feature_with_value_recursively(
-    parent: Any, child_field: Any
-) -> None:
+def _replace_this_feature_with_value_recursively(parent: Any, child_field: Any) -> None:
     """Recursively replaces the features with their values.
 
     if the field is a feature, replace it with its value. If the field is a
@@ -493,14 +509,10 @@ class ProtoUnitCell:
             tensor_columns.append(tf.random.uniform([n_cells], vmin, vmax))
 
         tensor = tf.stack(tensor_columns, axis=0)
-        constraint_func = lambda x: tf.clip_by_value(
-            x, clip_value_min, clip_value_max
-        )
+        constraint_func = lambda x: tf.clip_by_value(x, clip_value_min, clip_value_max)
         return tf.Variable(tensor, constraint=constraint_func)
 
-    def generate_cells_from_parameter_tensor(
-        self, tensor: tf.Tensor
-    ) -> List[UnitCell]:
+    def generate_cells_from_parameter_tensor(self, tensor: tf.Tensor) -> List[UnitCell]:
         """Returns an array of unit cells from a tensor shape: (n_cell, n_feat).
 
         Args:
@@ -510,9 +522,7 @@ class ProtoUnitCell:
             ValueError: when the tensor does not have the correct shape.
         """
         if tensor.shape[0] != len(self.features):
-            raise ValueError(
-                "The tensor must have shape (n_features, n_unit_cells)."
-            )
+            raise ValueError("The tensor must have shape (n_features, n_unit_cells).")
 
         unit_cell_array = []
         for i in range(tensor.shape[-1]):
@@ -531,6 +541,7 @@ def _rasterize_layer(
     periodicity: Tuple[ParameterType, ParameterType],
     pixel_density: float,
     enforce_4fold_symmetry: bool = False,
+    wavelength: Union[float, None] = None,
 ) -> raster.Canvas:
     """Rasterizes a layer.
 
@@ -542,17 +553,96 @@ def _rasterize_layer(
         enforce_4fold_symmetry: whether to make the layer 4-fold symmetric.
             If true, then the layer will be mirrored along the x and y axes,
             then added to its transpose.
+        wavelength: the wavelength of the simulation in meters.
 
     Returns:
         The rasterized layer.
     """
+    if type(layer.material) is Material:
+        if wavelength is None:
+            raise ValueError(
+                "The wavelength must be given to rasterize a layer with "
+                "a Material index."
+            )
+        layer_value = layer.material.index_at(wavelength)
+    else:
+        layer_value = layer.material
+
     return raster.Canvas(
         x_width=periodicity[0],
         y_width=periodicity[1],
         spacing=pixel_density,
-        background_value=layer.index,
+        background_value=layer_value,
         enforce_4fold_symmetry=enforce_4fold_symmetry,
-    ).rasterize(layer.get_shapes())
+    ).rasterize(layer.get_shapes(wavelength))
+
+
+@dataclasses.dataclass
+class Material:
+    """Defines a material class.
+
+    A material provides a way to define the refractive index of a material
+    given the wavelength of the simulation.
+
+    Attributes:
+        name: the name of the material.
+        path_to_csv_file: the path to the csv file that contains the refractive
+            index data. The data can be downloaded from refractiveindex.info.
+            Just search for the material and download the csv file, under the
+            "Data" section. Save the [CSV - comma separated] file as `csv_file_dir`.
+    """
+
+    name: str
+    path_to_csv_file: str
+
+    def __post_init__(self):
+        if not os.path.exists(self.path_to_csv_file):
+            raise ValueError(
+                f"The csv file for {self.name} does not exist in {self.path_to_csv_file}."
+            )
+
+        #
+
+        self.wl_n = []
+        self.wl_k = []
+        self.n = []
+        self.k = []
+
+        with open(self.path_to_csv_file, "r") as file:
+            reader = csv.reader(file)
+            mode = None
+            for row in reader:
+                if len(row) == 0 or row[0].strip() == "":
+                    continue  # Skip empty rows
+
+                if row[1] == "n":
+                    mode = "n"
+                    continue
+                elif row[1] == "k":
+                    mode = "k"
+                    continue
+
+                if mode == "n":
+                    self.wl_n.append(float(row[0]) * 1e-6)
+                    self.n.append(float(row[1]))
+                elif mode == "k":
+                    self.wl_k.append(float(row[0]) * 1e-6)
+                    self.k.append(float(row[1]))
+
+        self.min_wl_n = min(self.wl_n)
+        self.max_wl_n = max(self.wl_n)
+        self.min_wl_k = min(self.wl_k)
+        self.max_wl_k = max(self.wl_k)
+
+        self.n_interp = interpolate.interp1d(self.wl_n, self.n)
+        self.k_interp = interpolate.interp1d(self.wl_k, self.k)
+
+    def index_at(self, wavelength):
+        """Returns the refractive index at the given wavelength."""
+        if not (self.min_wl_n <= wavelength <= self.max_wl_n):
+            raise ValueError(f"Wavelength {wavelength} is out of range.")
+
+        return self.n_interp(wavelength) + 1.0j * self.k_interp(wavelength)
 
 
 @dataclasses.dataclass
@@ -642,16 +732,10 @@ class SimInstance:
             raise ValueError("All y periods must be the same.")
 
         # check all ref. indices are the same for transmission and reflection regions
-        refl_indices = [
-            unit_cell.refl_index for unit_cell in self.unit_cell_array
-        ]
-        tran_indices = [
-            unit_cell.tran_index for unit_cell in self.unit_cell_array
-        ]
+        refl_indices = [unit_cell.refl_index for unit_cell in self.unit_cell_array]
+        tran_indices = [unit_cell.tran_index for unit_cell in self.unit_cell_array]
         if len(set(refl_indices)) != 1:
-            raise ValueError(
-                "All ref. indices must be the same for reflection region."
-            )
+            raise ValueError("All ref. indices must be the same for reflection region.")
         if len(set(tran_indices)) != 1:
             raise ValueError(
                 "All ref. indices must be the same for transmission region."
@@ -799,16 +883,12 @@ def combine_sim_results(
     ry = tf.concat([sim_result.ry for sim_result in sim_results], axis=1)
     rz = tf.concat([sim_result.rz for sim_result in sim_results], axis=1)
     r_eff = tf.concat([sim_result.r_eff for sim_result in sim_results], axis=1)
-    r_power = tf.concat(
-        [sim_result.r_power for sim_result in sim_results], axis=1
-    )
+    r_power = tf.concat([sim_result.r_power for sim_result in sim_results], axis=1)
     tx = tf.concat([sim_result.tx for sim_result in sim_results], axis=1)
     ty = tf.concat([sim_result.ty for sim_result in sim_results], axis=1)
     tz = tf.concat([sim_result.tz for sim_result in sim_results], axis=1)
     t_eff = tf.concat([sim_result.t_eff for sim_result in sim_results], axis=1)
-    t_power = tf.concat(
-        [sim_result.t_power for sim_result in sim_results], axis=1
-    )
+    t_power = tf.concat([sim_result.t_power for sim_result in sim_results], axis=1)
     xy_harmonics = sim_results[0].xy_harmonics
     return SimResult(
         rx=rx,
@@ -899,9 +979,7 @@ def simulate_parameterized_unit_cells_one_batch(
     fwd_jvp_mode: bool = True,
 ) -> tf.Tensor:
     if not sim_config.return_tensor:
-        raise ValueError(
-            "SimConfig.return_tensor=True is required for this method."
-        )
+        raise ValueError("SimConfig.return_tensor=True is required for this method.")
 
     if len(proto_cell.features) == 0:
         raise ValueError("The proto cell has no features (not parameterized).")
@@ -950,16 +1028,12 @@ def simulate_parameterized_unit_cells_one_batch_no_jvp(
     fwd_jvp_mode: bool = False,
 ) -> tf.Tensor:
     if not sim_config.return_tensor:
-        raise ValueError(
-            "SimConfig.return_tensor=True is required for this method."
-        )
+        raise ValueError("SimConfig.return_tensor=True is required for this method.")
 
     if len(proto_cell.features) == 0:
         raise ValueError("The proto cell has no features (not parameterized).")
 
-    children = proto_cell.generate_cells_from_parameter_tensor(
-        parameter_tensor
-    )
+    children = proto_cell.generate_cells_from_parameter_tensor(parameter_tensor)
     sim_instance = SimInstance(
         unit_cell_array=children,
         incidence=incidence,
@@ -1032,9 +1106,7 @@ def _compute_output_and_jvp(
                 tape.watch(cell_param)
                 cell_param_list[i] = cell_param
             parameter_tensor = tf.concat(cell_param_list, axis=-1)
-            children = proto_cell.generate_cells_from_parameter_tensor(
-                parameter_tensor
-            )
+            children = proto_cell.generate_cells_from_parameter_tensor(parameter_tensor)
             sim_instance = SimInstance(
                 unit_cell_array=children,
                 incidence=incidence,
@@ -1042,9 +1114,7 @@ def _compute_output_and_jvp(
             )
             # output in the shape of (batch_size, n_cells, t_xy)
             output = simulate_one(sim_instance)
-            outputs = tf.split(
-                output, num_or_size_splits=len(cell_param_list), axis=1
-            )
+            outputs = tf.split(output, num_or_size_splits=len(cell_param_list), axis=1)
 
         jac_array = []
         for cell_output, cell_param in zip(outputs, cell_param_list):
@@ -1138,11 +1208,15 @@ def simulate_one(sim_instance: "SimInstance") -> "SimResult":
     batch_size = len(incidence_dict["wavelength"])
     ER_t_arrary = []
     for unit_cell in sim_instance.unit_cell_array:
-        ER_t = unit_cell.get_epsilon(sim_instance.sim_config.resolution)
-        ER_t = tf.tile(
-            ER_t[tf.newaxis, tf.newaxis, tf.newaxis, :, :, :],
-            multiples=(batch_size, 1, 1, 1, 1, 1),
-        )
+        ER_t_wl = []
+        for wavelength in incidence_dict["wavelength"]:
+            this_epsilon = unit_cell.get_epsilon(
+                sim_instance.sim_config.resolution,
+                wavelength=wavelength,
+            )
+            this_epsilon = this_epsilon[tf.newaxis, tf.newaxis, tf.newaxis, :, :, :]
+            ER_t_wl.append(this_epsilon)
+        ER_t = tf.concat(ER_t_wl, axis=0)
         ER_t_arrary.append(ER_t)
     ER_t = tf.concat(ER_t_arrary, axis=1)
     # Dielectric materials for now
