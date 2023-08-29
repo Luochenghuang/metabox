@@ -167,3 +167,33 @@ def unravel_incidence(incidence: Incidence) -> Dict[str, Any]:
 
 ParameterType = Union[Feature, float, tf.Tensor]
 CoordType = Tuple[ParameterType, ParameterType]
+
+TF_FUNCTIONS = [
+    "abs",
+    "acos",
+    "acosh",
+    "add",
+    "asin",
+    "asinh",
+    "atan",
+    "atanh",
+    "cos",
+    "cosh",
+    "sin",
+    "sinh",
+    "tan",
+    "tanh",
+    "exp",
+    "sqrt",
+    "square",
+    "reduce_sum",
+    "reduce_mean",
+    "reduce_max",
+    "reduce_min",
+    "matmul",
+    "transpose",
+    "reshape",
+    "expand_dims",
+    "squeeze"
+    # Add any other Tensor functions you want to support here
+]

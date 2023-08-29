@@ -1,7 +1,7 @@
 """
 Defines a lens assembly and functionalities for simualting the performances of the lens assembly.
 """
-import copy, os, dataclasses, enum, itertools, logging, dill, tqdm
+import copy, os, dataclasses, enum, itertools, logging, dill, tqdm, re
 from typing import List, Tuple, Union
 
 import numpy as np
@@ -37,6 +37,7 @@ class AtomArray2D:
     period: float
     mmodel: modeling.Metamodel = None
     proto_unit_cell: rcwa.ProtoUnitCell = None
+    cached_fields: List[tf.Tensor] = None
 
     def __post_init__(self):
         has_mmodel = self.mmodel is not None
@@ -50,7 +51,6 @@ class AtomArray2D:
                 "Must have either a mmodel or a parameterized unit cell."
             )
         self.use_mmodel = has_mmodel
-        self.cached_fields = None
 
     def find_feature_index_excluding_wavelength(self, feature_str: str):
         """Returns the index of the feature in the structure tensor.
@@ -1160,7 +1160,7 @@ class Metasurface(Surface):
                 output_field = field_1d_y.expand_to_2d()
 
         else:
-            if self.atom_2d.cached_field is None:
+            if self.atom_2d.cached_fields is None:
                 self.atom_2d.cached_fields = structure_to_field_2d(
                     self.atom_2d,
                     incidence,
@@ -1301,6 +1301,97 @@ class FigureOfMerit(enum.Enum):
 
 
 @dataclasses.dataclass
+class CustomFigureOfMerit:
+    """A data class that represents a custom figure of merit function.
+
+    This class encapsulates a mathematical expression that represents a figure of merit
+    function. It ensures the validity of the expression based on predefined constraints,
+    and raises exceptions if the given expression violates them.
+
+    Attributes:
+        expression (str): The mathematical expression that represents the figure of merit.
+
+    Methods:
+        get_validation_errors: Checks the validity of the expression based on predefined
+        constraints and returns detailed error messages for any violations.
+
+        is_valid_expression: Validates the mathematical structure and content of the
+        expression against allowed patterns.
+
+    Example:
+        >>> fom = CustomFigureOfMerit("psf + strehl_ratio")
+
+    Args:
+        expression: the expression of the figure of merit function.
+    """
+
+    expression: str
+
+    def __post_init__(self):
+        """Initialization"""
+        if self.expression is None:
+            raise ValueError("The expression cannot be None.")
+        validation_errors = self.get_validation_errors()
+        if validation_errors:
+            raise ValueError(
+                f"Expression validation failed:\n{validation_errors}"
+            )
+
+    def get_validation_errors(self):
+        allowed_keywords = [
+            "psf",
+            "strehl_ratio",
+            "max_intensity",
+            "center_intensity",
+            "ideal_mtf",
+        ]
+        validation_errors = []
+
+        for keyword in allowed_keywords:
+            if keyword in self.expression and not re.search(
+                rf"\b{keyword}\b", self.expression
+            ):
+                validation_errors.append(
+                    f"'{keyword}' should not be part of another word or surrounded by non-allowed characters."
+                )
+
+        if not self.is_valid_expression(self.expression):
+            validation_errors.append(
+                "Ensure you are only using allowed operators: +, -, *, /, (, ).\n"
+                f"And the following functions: {utils.TF_FUNCTIONS}.\n"
+                "Ensure you are using the allowed variables: psf, strehl_ratio, max_intensity, center_intensity, ideal_mtf."
+            )
+
+        return "\n".join(validation_errors)
+
+    def is_valid_expression(self, user_expression):
+        # List of allowed characters and patterns
+        allowed_patterns = [
+            r"\bpsf\b",
+            r"\bstrehl_ratio\b",
+            r"\bmax_intensity\b",
+            r"\bcenter_intensity\b",
+            r"\bideal_mtf\b",
+            r"\+",
+            r"\-",
+            r"\/",
+            r"\(",
+            r"\)",
+            r"\d+(\.\d+)?",  # basic patterns
+        ]
+
+        tf_functions = utils.TF_FUNCTIONS
+        allowed_patterns.extend(tf_functions)
+
+        # Construct the regex pattern
+        pattern = "|".join(allowed_patterns)
+        pattern = f"^{pattern}+$"
+
+        # Match against user input
+        return bool(re.match(pattern, user_expression))
+
+
+@dataclasses.dataclass
 class LensAssembly:
     """Defines a lens assembly.
 
@@ -1322,7 +1413,7 @@ class LensAssembly:
     surfaces: List[Surface]
     incidence: Incidence
     aperture_stop_index: int = -1
-    figure_of_merit: Union[FigureOfMerit, None] = None
+    figure_of_merit: Union[FigureOfMerit, CustomFigureOfMerit, None] = None
     use_antialiasing: bool = True
     use_padding: bool = True
     use_x_pol: bool = True
@@ -1439,6 +1530,8 @@ class LensAssembly:
         """
         if self.figure_of_merit is None:
             raise ValueError("No figure of merit defined.")
+        elif isinstance(self.figure_of_merit, CustomFigureOfMerit):
+            return self.compute_custom_FOM(self.figure_of_merit)
         elif self.figure_of_merit not in FigureOfMerit:
             raise ValueError(
                 f"Invalid figure of merit {self.figure_of_merit}."
@@ -1460,6 +1553,50 @@ class LensAssembly:
             raise ValueError(
                 "Invalid figure of merit. This should never happen."
             )
+
+    def compute_custom_FOM(self, custom_FOM: CustomFigureOfMerit) -> tf.Tensor:
+        # List of tensorflow functions (you can extend this list as needed)
+        tf_functions = utils.TF_FUNCTIONS
+
+        user_expression = custom_FOM.expression
+
+        # Replace arithmetic operations
+        replacements = {
+            "\*": " * ",
+            "\/": " / ",
+            "\+": " + ",
+            "\-": " - ",
+        }
+        for pattern, replacement in replacements.items():
+            user_expression = re.sub(pattern, replacement, user_expression)
+
+        # Compute variables if needed
+        if "psf" in user_expression:
+            psf = self.compute_field_on_sensor()
+        if "strehl_ratio" in user_expression:
+            if "psf" not in locals():
+                psf = self.compute_field_on_sensor()
+            strehl_ratio = metrics.get_mtf_volume(psf) / self.ideal_mtf
+        if "max_intensity" in user_expression:
+            if "psf" not in locals():
+                psf = self.compute_field_on_sensor()
+            max_intensity = metrics.get_max_intensity(psf)
+        if "center_intensity" in user_expression:
+            if "psf" not in locals():
+                psf = self.compute_field_on_sensor()
+            center_intensity = metrics.get_center_intensity(psf)
+
+        user_expression = user_expression.replace(
+            "ideal_mtf", "self.ideal_mtf"
+        )
+        user_expression = user_expression.replace("log", "tf.math.log")
+
+        # Replace functions with TensorFlow functions
+        for func in tf_functions:
+            user_expression = user_expression.replace(func, f"tf.{func}")
+
+        # Evaluate the TensorFlow expression
+        return eval(user_expression)
 
     def compute_penalty(self) -> tf.Tensor:
         """Computes the penalty of the lens assembly.
@@ -2256,7 +2393,6 @@ def initialize_2d_atom_array_metamodel(
         period=period,
         mmodel=mmodel,
         set_structures_variable=set_structures_variable,
-        exclude_wavelength=exclude_wavelength,
     )
 
     return AtomArray2D(
