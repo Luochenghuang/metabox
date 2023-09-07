@@ -22,15 +22,19 @@
     .. image:: https://img.shields.io/twitter/url/http/shields.io.svg?style=social&label=Twitter
         :alt: Twitter
         :target: https://twitter.com/metabox
+
 =======
 metabox
 =======
-
 
     A multi-scale optimization framework for diffractive optical systems.
 
 
 A longer description goes here...
+
+.. figure:: /metabox_bg.svg
+   :width: 400
+   :alt: metabox logo
 
 
 Install
