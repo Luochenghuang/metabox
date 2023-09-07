@@ -190,10 +190,13 @@ TF_FUNCTIONS = [
     "reduce_mean",
     "reduce_max",
     "reduce_min",
+    "reduce_prod",
     "matmul",
     "transpose",
     "reshape",
     "expand_dims",
-    "squeeze"
+    "squeeze",
+    "stack",
+    "concat",
     # Add any other Tensor functions you want to support here
 ]

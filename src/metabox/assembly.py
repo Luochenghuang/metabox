@@ -2,7 +2,7 @@
 Defines a lens assembly and functionalities for simualting the performances of the lens assembly.
 """
 import copy, os, dataclasses, enum, itertools, logging, dill, tqdm, re
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Dict
 
 import numpy as np
 import tensorflow as tf
@@ -1302,11 +1302,20 @@ class FigureOfMerit(enum.Enum):
 
 @dataclasses.dataclass
 class CustomFigureOfMerit:
-    """A data class that represents a custom figure of merit function.
+    f"""A data class that represents a custom figure of merit function.
 
     This class encapsulates a mathematical expression that represents a figure of merit
     function. It ensures the validity of the expression based on predefined constraints,
     and raises exceptions if the given expression violates them.
+
+    Allowed operators: +, -, *, /, (, )
+    Allowed predefined variable names:
+        psf: the point spread function. Shape: (batch, n_pixels, n_pixels)
+        strehl_ratio: the Strehl ratio. Shape: (batch,)
+        max_intensity: the maximum intensity. Shape: (batch,)
+        center_intensity: the center intensity. Shape: (batch,)
+        ideal_mtf: the ideal modulation transfer function. Shape: (batch, n_pixels, n_pixels)
+    Allowed functions: {utils.TF_FUNCTIONS}
 
     Attributes:
         expression (str): The mathematical expression that represents the figure of merit.
@@ -1323,9 +1332,15 @@ class CustomFigureOfMerit:
 
     Args:
         expression: the expression of the figure of merit function.
+        data: user can provide extra data to be used in the expression.
+            For instance, user can define an expression such as
+            "reduce_sum((psf - target_image)**2)" where
+            CustomFigureOfMerit.data["target_image"] is a tensor of shape
+            (batch, n_pixels, n_pixels).
     """
 
     expression: str
+    data: Dict[str, tf.Tensor] = dataclasses.field(default_factory=dict)
 
     def __post_init__(self):
         """Initialization"""
@@ -1346,6 +1361,9 @@ class CustomFigureOfMerit:
             "ideal_mtf",
         ]
         validation_errors = []
+
+        # Include keys from the user data in the allowed keywords
+        allowed_keywords.extend(self.data.keys())
 
         for keyword in allowed_keywords:
             if keyword in self.expression and not re.search(
@@ -1585,15 +1603,25 @@ class LensAssembly:
             if "psf" not in locals():
                 psf = self.compute_field_on_sensor()
             center_intensity = metrics.get_center_intensity(psf)
+        if "psf" in locals():
+            psf_tensor = tf.math.abs(psf.tensor) ** 2
 
-        user_expression = user_expression.replace(
-            "ideal_mtf", "self.ideal_mtf"
-        )
-        user_expression = user_expression.replace("log", "tf.math.log")
+        replacements = {
+            "ideal_mtf": "self.ideal_mtf",
+            "psf": "psf_tensor",
+        }
+
+        for old, new in replacements.items():
+            user_expression = user_expression.replace(old, new)
 
         # Replace functions with TensorFlow functions
         for func in tf_functions:
             user_expression = user_expression.replace(func, f"tf.{func}")
+
+        # Add the user data to the local variables
+        if custom_FOM.data:
+            for key, value in custom_FOM.data.items():
+                user_expression = user_expression.replace(key, f"self.data['{key}']")
 
         # Evaluate the TensorFlow expression
         return eval(user_expression)

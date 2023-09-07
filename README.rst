@@ -32,7 +32,7 @@ metabox
 
 A longer description goes here...
 
-.. figure:: /metabox_bg.svg
+.. figure:: images/metabox_bg.svg
    :width: 400
    :alt: metabox logo
 
