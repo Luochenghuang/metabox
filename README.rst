@@ -23,6 +23,9 @@
         :alt: Twitter
         :target: https://twitter.com/metabox
 
+.. figure:: images/metabox_bg.svg
+   :width: 400
+   :alt: metabox logo
 =======
 metabox
 =======
@@ -32,9 +35,6 @@ metabox
 
 A longer description goes here...
 
-.. figure:: images/metabox_bg.svg
-   :width: 400
-   :alt: metabox logo
 
 
 Install
