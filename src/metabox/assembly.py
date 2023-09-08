@@ -32,6 +32,8 @@ class AtomArray2D:
         period: the period of the atom array in meters.
         mmodel: the `MetaModel` used to generate the atom array.
             The `MetaModel` stores the trained model and the structure of the atom.
+        proto_unit_cell: the proto unit cell (rcwa.ProtoUnitCell)
+        cached_fields: the cached transmission coefficients for the atom array.
     """
 
     tensor: tf.Tensor
@@ -1137,6 +1139,14 @@ class Metasurface(Surface):
                 self.variables.append(self.atom_1d.tensor)
             else:
                 self.variables.append(self.atom_2d.tensor)
+
+    def get_atom_positions(self) -> np.ndarray:
+        """Gets the positions of the atoms."""
+        x_pos = y_pos = np.linspace(
+            -self.diameter / 2, self.diameter / 2, 2 * self.n_pixels_radial
+        )
+        xx_pos, yy_pos = np.meshgrid(x_pos, y_pos)
+        return np.stack([xx_pos, yy_pos], axis=-1)
 
     def get_modulation_2d(
         self,
