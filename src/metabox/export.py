@@ -130,7 +130,7 @@ def generate_noncircular_gds(
         # Arrange locations in a noncircular grid.
         # The exact arrangement will depend on your specific requirements.
         loc_x, loc_y = xy_position * 1e6
-        ref = gdspy.CellReference(cell, (loc_x, loc_y))
+        ref = gdspy.CellReference(cell, (loc_x, -loc_y))
         device.add([ref])
 
     # save the GDSII file
