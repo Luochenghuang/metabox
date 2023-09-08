@@ -302,7 +302,6 @@ class Field2D(FieldProperties):
                 )
             )
             ax.set_title(title)
-            plt.colorbar(mappable=im)
             plt.show()
 
     def to_rgb_intensity(self):
