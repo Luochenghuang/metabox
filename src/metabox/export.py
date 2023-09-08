@@ -74,8 +74,12 @@ def get_loc_along_circle(
     location_index_arr = np.argwhere(circle == 1)
     hp = period / 2
     radius_in_micron = radius_in_meters * 1e6
-    x_coor = np.linspace(-radius_in_micron + hp, radius_in_micron - hp, radius_size * 2)
-    y_coor = np.linspace(-radius_in_micron + hp, radius_in_micron - hp, radius_size * 2)
+    x_coor = np.linspace(
+        -radius_in_micron + hp, radius_in_micron - hp, radius_size * 2
+    )
+    y_coor = np.linspace(
+        -radius_in_micron + hp, radius_in_micron - hp, radius_size * 2
+    )
     x_locations = x_coor.take(location_index_arr[:, 0])
     y_locations = y_coor.take(location_index_arr[:, 1])
     return np.stack([x_locations, y_locations])
@@ -83,22 +87,12 @@ def get_loc_along_circle(
 
 def generate_noncircular_gds(
     metasurface: assembly.Metasurface,
+    layer: int,
     export_name: str,
     export_directory: Union[None, str] = None,
     inverted: bool = False,
 ) -> None:
-    """Function to generate the GDSII file for the non-circular metasurface.
-
-    Args:
-        metasurface (assembly.Metasurface): the metasurface.
-        export_directory (str): the directory to export the GDSII file to.
-        inverted (bool, optional): whether to invert the metasurface. Defaults to False.
-    """
-    if metasurface.use_circular_expansions:
-        raise NotImplementedError(
-            "generate_noncircular_gds is only implemented for non-circular expansions for now."
-        )
-
+    """Function to generate the GDSII file for a noncirculat metasurface."""
     if export_directory is None:
         export_directory = "./gds_export/"
 
@@ -110,106 +104,42 @@ def generate_noncircular_gds(
     # the entire metasurface
     device = lib.new_cell("metasurface")
 
-    periodicity = metasurface.metamodel.proto_atom.period * 1e6
-    n_pixels_radial = metasurface.n_pixels_radial
-    radius_in_meters = metasurface.diameter / 2.0
-    radius_in_microns = radius_in_meters * 1e6
-    dummy_incidence = assembly.Incidence(wavelength=1.0, theta=[0], phi=[0])
-    atom_array = metasurface.atom_2d.get_atom_array(dummy_incidence)[0]
-    x_locations = y_locations = np.linspace(
-        -radius_in_microns, radius_in_microns, 2 * n_pixels_radial
-    )
-    all_locations = np.stack(np.meshgrid(x_locations, y_locations), axis=-1)
-    all_locations = np.reshape(all_locations, (-1, 2))
-    for radial_ix, (this_atom, locations) in enumerate(zip(atom_array, all_locations)):
-        scatterer = gen_unit_cell(this_atom)
+    periodicity = metasurface.atom_2d.period * 1e6
+    atom_positions = metasurface.get_atom_positions().reshape([-1, 2])
+    if metasurface.atom_2d.use_mmodel:
+        cell_array = metasurface.atom_2d.mmodel.protocell.generate_cells_from_parameter_tensor(
+            metasurface.atom_2d.tensor
+        )
+    else:
+        cell_array = metasurface.atom_2d.proto_unit_cell.generate_cells_from_parameter_tensor(
+            metasurface.atom_2d.tensor
+        )
+    for name_index, (this_cell, xy_position) in enumerate(
+        zip(cell_array, atom_positions)
+    ):
+        polygon = unit_cell_to_gds_shape(this_cell, layer=layer)
         if inverted:
             box_hw = periodicity / 2.0
             box = gdspy.Rectangle([-box_hw, -box_hw], [box_hw, box_hw])
-            scatterer = gdspy.boolean(box, scatterer, "not")
-        cell = lib.new_cell(str(radial_ix))
-        cell.add(scatterer)
-        loc_x, loc_y = locations
+            polygon = gdspy.boolean(box, polygon, "not")
+        cell = lib.new_cell(str(name_index))
+        try:
+            cell.add(polygon)
+        except:
+            continue
+        # Arrange locations in a noncircular grid.
+        # The exact arrangement will depend on your specific requirements.
+        loc_x, loc_y = xy_position * 1e6
         ref = gdspy.CellReference(cell, (loc_x, loc_y))
         device.add([ref])
 
     # save the GDSII file
     if not os.path.exists(export_directory):
         os.makedirs(export_directory)
-    lib.write_gds("{}/{}.gds".format(export_directory, export_name))
+    lib.write_gds("{0}/{1}.gds".format(export_directory, export_name))
 
 
 def generate_gds(
-    metasurface: assembly.Metasurface,
-    export_name: str,
-    export_directory: Union[None, str] = None,
-    inverted: bool = False,
-) -> None:
-    """Function to generate the GDSII file for the metasurface.
-
-    Args:
-        metasurface (assembly.Metasurface): the metasurface.
-        export_directory (str): the directory to export the GDSII file to.
-        inverted (bool, optional): whether to invert the metasurface. Defaults to False.
-    """
-    if not metasurface.use_circular_expansions:
-        generate_noncircular_gds(
-            metasurface=metasurface,
-            export_name=export_name,
-            export_directory=export_directory,
-            inverted=inverted,
-        )
-        return
-
-    if export_directory is None:
-        export_directory = "./gds_export/"
-
-    importlib.reload(gdspy)
-
-    # The GDSII file is called a library, which contains multiple cells.
-    lib = gdspy.GdsLibrary()
-
-    # the entire metasurface
-    device = lib.new_cell("metasurface")
-
-    periodicity = metasurface.metamodel.proto_atom.period * 1e6
-    n_pixels_radial = metasurface.n_pixels_radial
-    radius_in_meters = metasurface.diameter / 2.0
-    r2c_basis = expansion.radius_to_circle_basis(n_pixels_radial)
-    r2c_basis = tf.cast(r2c_basis, tf.float64)
-    dummy_incidence = assembly.Incidence(wavelength=1.0, theta=[0], phi=[0])
-    atom_array = metasurface.atom_1d.get_atom_array(dummy_incidence)[0]
-    for radial_ix, this_atom in enumerate(atom_array):
-        scatterer = gen_unit_cell(this_atom)
-        if inverted:
-            box_hw = periodicity / 2.0
-            box = gdspy.Rectangle([-box_hw, -box_hw], [box_hw, box_hw])
-            scatterer = gdspy.boolean(box, scatterer, "not")
-        cell = lib.new_cell(str(radial_ix))
-        cell.add(scatterer)
-        locations_along_circle = get_loc_along_circle(
-            radius_in_meters,
-            n_pixels_radial,
-            radial_ix,
-            periodicity,
-            r2c_basis,
-        )
-        for index in range(locations_along_circle.shape[1]):
-            loc_x, loc_y = locations_along_circle[:, index]
-            ref = gdspy.CellReference(cell, (loc_x, loc_y))
-            device.add([ref])
-
-    # save the GDSII file
-    if not os.path.exists(export_directory):
-        os.makedirs(export_directory)
-    lib.write_gds("{}/{}.gds".format(export_directory, export_name))
-
-
-def generate_noncircular_gds_new():
-    raise NotImplementedError
-
-
-def generate_gds_new(
     metasurface: assembly.Metasurface,
     layer: int,
     export_name: str,
@@ -225,8 +155,9 @@ def generate_gds_new(
         inverted (bool, optional): whether to invert the metasurface. Defaults to False.
     """
     if not metasurface.use_circular_expansions:
-        generate_noncircular_gds_new(
+        generate_noncircular_gds(
             metasurface=metasurface,
+            layer=layer,
             export_name=export_name,
             export_directory=export_directory,
             inverted=inverted,
@@ -249,22 +180,16 @@ def generate_gds_new(
     radius_in_meters = metasurface.diameter / 2.0
     r2c_basis = expansion.radius_to_circle_basis(n_pixels_radial)
     r2c_basis = tf.cast(r2c_basis, tf.float64)
-    dummy_incidence = assembly.Incidence(wavelength=1.0, theta=[0], phi=[0])
     if metasurface.atom_1d.use_mmodel:
-        cell_array = (
-            metasurface.atom_1d.mmodel.protocell.generate_cells_from_parameter_tensor(
-                metasurface.atom_1d.tensor
-            )
+        cell_array = metasurface.atom_1d.mmodel.protocell.generate_cells_from_parameter_tensor(
+            metasurface.atom_1d.tensor
         )
     else:
-        cell_array = (
-            metasurface.atom_1d.proto_unit_cell.generate_cells_from_parameter_tensor(
-                metasurface.atom_1d.tensor
-            )
+        cell_array = metasurface.atom_1d.proto_unit_cell.generate_cells_from_parameter_tensor(
+            metasurface.atom_1d.tensor
         )
-    cell_array = cell_array
     for radial_ix, this_cell in enumerate(cell_array):
-        polygon = unit_cell_to_gds_shape(this_cell)
+        polygon = unit_cell_to_gds_shape(this_cell, layer=layer)
         if inverted:
             box_hw = periodicity / 2.0
             box = gdspy.Rectangle([-box_hw, -box_hw], [box_hw, box_hw])
