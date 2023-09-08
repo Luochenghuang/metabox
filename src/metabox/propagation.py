@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from matplotlib.ticker import EngFormatter
+from scipy import interpolate
 
 from metabox import expansion, utils
 
@@ -206,7 +207,7 @@ class Field2D(FieldProperties):
             ax.set_xlabel("X")
             ax.set_ylabel("Y")
             ax.grid(False)
-            title = "Phase at λ={0}µm, AOI={1}°,{2}°".format(
+            title = "Phase Distribution\n λ={0}µm, AOI={1}°,{2}°".format(
                 round(wave, 2), round(angle[0], 2), round(angle[1], 2)
             )
             ax.set_title(title)
@@ -250,13 +251,84 @@ class Field2D(FieldProperties):
             ax.set_xlabel("X")
             ax.set_ylabel("Y")
             ax.grid(False)
-            title = "Intensity at λ={0}µm, AOI={1}°,{2}°".format(
+            title = "Intensity Distribution\n λ={0}µm, AOI={1}°,{2}°".format(
                 round(wave, 2), round(angle[0], 2), round(angle[1], 2)
             )
             ax.set_title(title)
             cax = plt.axes([0.95, 0.05, 0.05, 0.9])
             plt.colorbar(mappable=im, cax=cax)
             plt.show()
+
+    def show_color_intensity(self, crop_factor=1.0):
+        """Shows the intensity of the field.
+
+        Args:
+            crop_factor (float): The crop factor. Must be less than or equal to 1.0.
+        """
+
+        if crop_factor > 1.0:
+            raise ValueError("Zoom must be greater than or equal to 1.0.")
+
+        rgb_intensity = self.to_rgb_intensity()
+        if crop_factor != 1.0:
+            rgb_intensity = tf.image.central_crop(rgb_intensity, crop_factor)
+        ag = rgb_intensity.shape[0]
+        diameter = self.period * rgb_intensity.shape[-2] * crop_factor
+        radius = diameter / 2.0
+        for j in range(ag):
+            if len(self.wavelength) == 1:
+                wave = round(self.wavelength[0] * 1e6, 2)
+            else:
+                wave_0 = round(self.wavelength[0] * 1e6, 2)
+                wave_1 = round(self.wavelength[-1] * 1e6, 2)
+                wave = f"{wave_0}-{wave_1}"
+            angle = list(itertools.product(self.theta, self.phi))[j]
+            f = plt.figure(figsize=(5, 5), dpi=100)
+            ax = plt.axes([0, 0.05, 0.9, 0.9])
+            im = ax.imshow(
+                rgb_intensity[j], extent=[-radius, radius, -radius, radius]
+            )
+            formatter0 = EngFormatter(unit="m")
+            ax.xaxis.set_major_formatter(formatter0)
+            ax.yaxis.set_major_formatter(formatter0)
+            plt.locator_params(axis="y", nbins=3)
+            plt.locator_params(axis="x", nbins=3)
+            ax.set_xlabel("X")
+            ax.set_ylabel("Y")
+            ax.grid(False)
+            title = (
+                "Color Intensity Distribution\n λ={0}µm, AOI={1}°,{2}°".format(
+                    wave, round(angle[0], 2), round(angle[1], 2)
+                )
+            )
+            ax.set_title(title)
+            plt.colorbar(mappable=im)
+            plt.show()
+
+    def to_rgb_intensity(self):
+        """Return RGB image of the intensity."""
+        import colour
+
+        intensity_distributions = self.get_intensity().numpy()
+        weighted_intensity_distributions = []
+
+        for wavelength, intensity_dist in zip(
+            self.wavelength, intensity_distributions
+        ):
+            r, g, b = utils.wavelength_to_rgb(wavelength)
+            r_dist = intensity_dist * r
+            g_dist = intensity_dist * g
+            b_dist = intensity_dist * b
+            rgb_dist = np.stack([r_dist, g_dist, b_dist], axis=-1)
+            weighted_intensity_distributions.append(rgb_dist)
+        # normalize the image
+        weighted_intensity_distributions = np.array(
+            weighted_intensity_distributions
+        )
+        weighted_intensity_distributions /= np.max(
+            weighted_intensity_distributions
+        )
+        return np.sum(weighted_intensity_distributions, axis=0)
 
 
 @dataclasses.dataclass

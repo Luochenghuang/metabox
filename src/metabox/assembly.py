@@ -1512,7 +1512,7 @@ class LensAssembly:
 
     def show_psf(
         self, use_wavelength_average: bool = False, crop_factor: float = 1.0
-    ):
+    ) -> None:
         """Displays the point spread function of the lens assembly.
 
         Args:
@@ -1527,6 +1527,15 @@ class LensAssembly:
             self.compute_field_on_sensor().show_intensity(
                 crop_factor=crop_factor
             )
+        self.clear_cache()
+
+    def show_color_psf(
+        self,
+        crop_factor: float = 1.0,
+    ) -> None:
+        self.compute_field_on_sensor().show_color_intensity(
+            crop_factor=crop_factor
+        )
         self.clear_cache()
 
     def wavelength_average_psf(self):
