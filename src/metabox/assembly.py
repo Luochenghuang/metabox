@@ -2,6 +2,7 @@
 Defines a lens assembly and functionalities for simualting the performances of the lens assembly.
 """
 import copy, os, dataclasses, enum, itertools, logging, dill, tqdm, re
+from PIL import Image
 from typing import List, Tuple, Union, Dict
 
 import numpy as np
@@ -1359,6 +1360,7 @@ class CustomFigureOfMerit:
             "max_intensity",
             "center_intensity",
             "ideal_mtf",
+            "dist",
         ]
         validation_errors = []
 
@@ -1375,8 +1377,8 @@ class CustomFigureOfMerit:
 
         if not self.is_valid_expression(self.expression):
             validation_errors.append(
-                "Ensure you are only using allowed operators: +, -, *, /, (, ).\n"
-                f"And the following functions: {utils.TF_FUNCTIONS}.\n"
+                "Ensure you are only using allowed operators: +, -, *, /, (, ), :.\n"
+                f"And the following functions: {utils.TF_FUNCTIONS + 'log'}.\n"
                 "Ensure you are using the allowed variables: psf, strehl_ratio, max_intensity, center_intensity, ideal_mtf."
             )
 
@@ -1390,23 +1392,35 @@ class CustomFigureOfMerit:
             r"\bmax_intensity\b",
             r"\bcenter_intensity\b",
             r"\bideal_mtf\b",
+            r"\blog\b",
             r"\+",
             r"\-",
             r"\/",
             r"\(",
             r"\)",
+            r"\:",
+            r"\...",
             r"\d+(\.\d+)?",  # basic patterns
         ]
+
+        # Add the keys from the user data to the allowed patterns
+        allowed_patterns.extend(self.data.keys())
 
         tf_functions = utils.TF_FUNCTIONS
         allowed_patterns.extend(tf_functions)
 
         # Construct the regex pattern
         pattern = "|".join(allowed_patterns)
-        pattern = f"^{pattern}+$"
 
-        # Match against user input
-        return bool(re.match(pattern, user_expression))
+        # Split the user expression into elements
+        elements = re.split(r"\s|(?<=[\(\)\+\-\*/])", user_expression)
+
+        # Check each element against the patterns
+        for element in elements:
+            if element and not re.match(pattern, element):
+                return False
+
+        return True
 
 
 @dataclasses.dataclass
@@ -1609,6 +1623,7 @@ class LensAssembly:
         replacements = {
             "ideal_mtf": "self.ideal_mtf",
             "psf": "psf_tensor",
+            "log": "tf.math.log",
         }
 
         for old, new in replacements.items():
@@ -1621,7 +1636,9 @@ class LensAssembly:
         # Add the user data to the local variables
         if custom_FOM.data:
             for key, value in custom_FOM.data.items():
-                user_expression = user_expression.replace(key, f"self.data['{key}']")
+                user_expression = user_expression.replace(
+                    key, f"custom_FOM.data['{key}']"
+                )
 
         # Evaluate the TensorFlow expression
         return eval(user_expression)
@@ -1681,6 +1698,92 @@ class LensAssembly:
         for surface in self.surfaces:
             if type(surface) is Metasurface:
                 surface.clear_cache()
+
+
+@dataclasses.dataclass
+class IntensityTarget:
+    intensity: tf.Tensor
+    crop_factor: float = 1.0
+
+    def __post_init__(self):
+        self.intensity = tf.cast(self.intensity, dtype=tf.float32)
+
+        # # Pad to make it a square
+        # shape = tf.shape(self.intensity)
+
+        # # Calculate padding
+        # dim_diff = tf.abs(shape[0] - shape[1]) // 2
+        # lower_pad = dim_diff
+        # upper_pad = (
+        #     dim_diff if tf.shape(self.intensity)[0] % 2 == 0 else dim_diff + 1
+        # )
+
+        # rows_pad = (lower_pad, upper_pad) if shape[0] < shape[1] else (0, 0)
+        # cols_pad = (lower_pad, upper_pad) if shape[0] > shape[1] else (0, 0)
+
+        # # Pad the tensor
+        # self.intensity = tf.pad(
+        #     self.intensity, [rows_pad, cols_pad], "CONSTANT"
+        # )
+
+        # Normalize the intensity
+        self.intensity = self.intensity / tf.reduce_sum(self.intensity)
+
+    def dist(
+        self,
+        psf: tf.Tensor,
+    ) -> tf.Tensor:
+        """Computes the loss between the target intensity and the intensity of the field.
+
+        Args:
+
+        """
+        return cartesian_distance(self, psf)
+
+
+def cartesian_distance(
+    intensity_target: IntensityTarget,
+    psf: tf.Tensor,
+):
+    """Calculates the distance between the target intensity and the intensity of the field.
+
+    Args:
+        intensity_target: the target intensity.
+        psf: the point spread function.
+
+    Returns:
+        tf.Tensor: the distance between the target intensity and the intensity of
+            the field.
+    """
+
+    # normalize psf
+    psf = psf / tf.reduce_sum(psf)
+
+    # Add two extra dimensions to make it a 4D tensor
+    image_4d = tf.expand_dims(
+        tf.expand_dims(intensity_target.intensity, axis=0), axis=-1
+    )
+
+    # Now you can resize it
+    new_height = int(psf.shape[-2] * intensity_target.crop_factor)
+    new_width = int(psf.shape[-1] * intensity_target.crop_factor)
+    resized_image_4d = tf.image.resize_with_pad(
+        image_4d, new_height, new_width
+    )
+    if intensity_target.crop_factor != 1.0:
+        resized_image_4d = tf.image.resize_with_crop_or_pad(
+            resized_image_4d, psf.shape[-2], psf.shape[-1]
+        )
+
+    # Remove the extra dimensions to get the resized 2D image
+    target = tf.squeeze(resized_image_4d, axis=[0, -1])
+
+    # normalize the target intensity
+    target = target / tf.reduce_sum(target)
+
+    # calculate the distance
+    distance = tf.reduce_sum(tf.math.abs(psf - target) ** 2) ** 0.5
+    return distance
 
 
 def copy_lens_assembly(lens_assembly: LensAssembly) -> LensAssembly:
