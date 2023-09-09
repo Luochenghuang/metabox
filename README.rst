@@ -39,9 +39,9 @@ The package is built with flexibility at its core, making it easy to add new com
 
 Key features of `metabox` include:
 
-- A `rcwa` solver, derived from Shane Colburn's rcwa_tf[1], for direct computation of meta-atoms' diffraction efficiency. 
+- A `rcwa` solver, derived from Shane Colburn's rcwa_tf[1], for direct computation of meta-atoms' diffraction efficiency.
 - A built-in `raster` module for parameterizing meta-atoms' features.
-- An easy-to-use sampling system for features, which can train a metamodel to replace the `rcwa` solver, thus significantly speeding up simulations and optimization processes. 
+- An easy-to-use sampling system for features, which can train a metamodel to replace the `rcwa` solver, thus significantly speeding up simulations and optimization processes.
 - A module for sequential optics to model light propagation through the optical system.
 - An `assembly` module offering a suite of tools for building the optical system from meta-atoms, apertures, and other optical components.
 - A `merit` module for evaluating and inverse-designing the performance of the optical system.
