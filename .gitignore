@@ -54,3 +54,5 @@ MANIFEST
 .venv*/
 .conda*/
 .python-version
+
+examples/basis_data/
