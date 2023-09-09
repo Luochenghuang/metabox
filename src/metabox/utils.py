@@ -78,7 +78,7 @@ class Feature:
         self.value = value
 
 
-@dataclasses.dataclass(frozen=True)
+@dataclasses.dataclass
 class Incidence:
     """Defines the physical properties of the incident light.
 
@@ -94,8 +94,8 @@ class Incidence:
     """
 
     wavelength: Tuple[float]
-    theta: Tuple[float] = 0
-    phi: Tuple[float] = 0
+    theta: Tuple[float] = (0,)
+    phi: Tuple[float] = (0,)
     jones_vector: Tuple[float] = (1, 0)
 
 
