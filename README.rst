@@ -27,15 +27,29 @@
    :width: 400
    :alt: metabox logo
 =======
-metabox
+``metabox``: A High-Level Python API for Diffractive Optical System Design
 =======
 
-    A multi-scale optimization framework for diffractive optical systems.
+    metabox is a Python package built on TensorFlow, enabling the design, evaluation and optimization of complex diffractive optical systems with ease, flexibility, and high performance.
 
+`metabox` is a high-level Python package specifically designed for the creation, evaluation, and inverse optimization of diffractive optical systems. Leaning on the robust capabilities of TensorFlow, `metabox` offers a comprehensive and user-friendly API for optical system design.
 
-A longer description goes here...
+The package is built with flexibility at its core, making it easy to add new components, define custom merit functions, and employ various optimization algorithms. It's designed to be highly performant and scalable, capable of managing systems with millions of degrees of freedom. With its intuitive structure, `metabox` facilitates the design of intricate diffractive optical systems with minimal lines of code.
 
+Key features of `metabox` include:
 
+- A `rcwa` solver, derived from Shane Colburn's rcwa_tf[1], for direct computation of meta-atoms' diffraction efficiency. 
+- A built-in `raster` module for parameterizing meta-atoms' features.
+- An easy-to-use sampling system for features, which can train a metamodel to replace the `rcwa` solver, thus significantly speeding up simulations and optimization processes. 
+- A module for sequential optics to model light propagation through the optical system.
+- An `assembly` module offering a suite of tools for building the optical system from meta-atoms, apertures, and other optical components.
+- A `merit` module for evaluating and inverse-designing the performance of the optical system.
+- An `rcwa.Material` class for accessing pre-defined materials and their optical properties.
+- An `export` module that allows for the export of the diffractive optical design to a `.gds` file for fabrication.
+
+Overall, `metabox` is a powerful tool for both beginners and experienced users in the field of optical system design. By simplifying and accelerating the design process, it paves the way for innovative developments in the optical industry.
+
+[1] Colburn, S., Majumdar, A. Inverse design and flexible parameterization of meta-optics using algorithmic differentiation. Commun Phys 4, 65 (2021).
 
 Install
 =======
@@ -44,6 +58,9 @@ Run the following commands to install `metabox`::
     git clone https://github.com/Luochenghuang/metabox.git
     cd metabox
     pip install .
+
+Getting Started
+===============
 
 Making Changes & Contributing
 =============================
@@ -58,10 +75,6 @@ changes::
 It is a good idea to update the hooks to the latest version::
 
     pre-commit autoupdate
-
-Don't forget to tell your contributors to also install and use pre-commit.
-
-.. _pre-commit: https://pre-commit.com/
 
 Note
 ====
