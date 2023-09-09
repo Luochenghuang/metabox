@@ -49,7 +49,7 @@ The package is built with flexibility at its core, making it easy to add new com
 
 Key features of `metabox` include:
 
-- A `rcwa` solver, derived from Shane Colburn's rcwa_tf[1], for direct computation of meta-atoms' diffraction efficiency.
+- A `rcwa` solver, derived from rcwa_tf[1], for direct computation of meta-atoms' diffraction efficiency.
 - A built-in `raster` module for parameterizing meta-atoms' features.
 - An easy-to-use sampling system for features, which can train a metamodel to replace the `rcwa` solver, thus significantly speeding up simulations and optimization processes.
 - A module for sequential optics to model light propagation through the optical system.
@@ -62,14 +62,17 @@ Overall, `metabox` is a powerful tool for both beginners and experienced users i
 
 [1] Colburn, S., Majumdar, A. Inverse design and flexible parameterization of meta-optics using algorithmic differentiation. Commun Phys 4, 65 (2021).
 
+=======
 Install
 =======
+
 Run the following commands to install `metabox`::
 
     git clone https://github.com/Luochenghuang/metabox.git
     cd metabox
     pip install .
 
+===============
 Getting Started
 ===============
 `Tutorial 1: Metamodeling <https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_1_metamodeling.ipynb>`_
@@ -87,9 +90,19 @@ Getting Started
 
 `Tutorial 7: Hologram Optimization <https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_7_holograms.ipynb>`_
 
-Documentation:
-https://metabox.readthedocs.io/en/latest/
+=============
+Documentation
+=============
+`Module Reference <https://metabox.readthedocs.io/en/latest/api/modules.html>`_
 
+`Home Page <https://metabox.readthedocs.io/en/latest/>`_
+
+==================
+Citing ``metabox``
+==================
+The manuscript is being prepared.
+
+=============================
 Making Changes & Contributing
 =============================
 
@@ -103,10 +116,3 @@ changes::
 It is a good idea to update the hooks to the latest version::
 
     pre-commit autoupdate
-
-Note
-====
-.. image:: https://img.shields.io/badge/-PyScaffold-005CA0?logo=pyscaffold
-    :alt: Project generated with PyScaffold
-    :target: https://pyscaffold.org/
-|
