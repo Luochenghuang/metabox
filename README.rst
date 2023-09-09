@@ -22,11 +22,19 @@
     .. image:: https://img.shields.io/twitter/url/http/shields.io.svg?style=social&label=Twitter
         :alt: Twitter
         :target: https://twitter.com/metabox
-
+      .. image:: https://api.cirrus-ci.com/github/Luochenghuang/metabox.svg?branch=main
+         :alt: Built Status
+         :target: https://cirrus-ci.com/github/Luochenghuang/metabox
+      .. image:: https://readthedocs.org/projects/metabox/badge/?version=latest
+         :alt: ReadTheDocs
+         :target: https://metabox.readthedocs.io/en/stable/
 .. figure:: images/metabox.svg
    :width: 500
    :alt: metabox logo
    :align: center
+
+.. image:: https://coveralls.io/repos/github/Luochenghuang/metabox/badge.svg?branch=main
+   :target: https://coveralls.io/github/Luochenghuang/metabox?branch=main
 =======
 ``metabox``: A High-Level Python API for Diffractive Optical System Design
 =======
