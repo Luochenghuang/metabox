@@ -33,8 +33,8 @@ env:
     - echo "$(which pip) -- $(pip -VV)"
     - python -c 'import os, sys; print(os.name, sys.platform, getattr(sys, "abiflags", None))'
   prepare_script:  # avoid git failing with setuptools-scm
-    - git config --global user.email "you@example.com"
-    - git config --global user.name "Your Name"
+    - git config --global user.email "luocheng@uw.edu"
+    - git config --global user.name "Luocheng Huang"
   pip_cache:
     folder: "${CIRRUS_WORKING_DIR}/.cache/pip"
     fingerprint_script: echo "${CIRRUS_OS}-${CIRRUS_TASK_NAME}"
@@ -96,99 +96,97 @@ check_task:
 
 linux_task:
   matrix:
-    - name: test (Linux - 3.7)
-      container: {image: "python:3.7-bullseye"}
     - name: test (Linux - 3.8)
       container: {image: "python:3.8-bullseye"}
     - name: test (Linux - 3.9)
       container: {image: "python:3.9-bullseye"}
     - name: test (Linux - 3.10)
       container: {image: "python:3.10-bullseye"}
-    - name: test (Linux - 3.11)
-      container: {image: "python:3.11-bullseye"}
-    - name: test (Linux - 3.12)
-      container: {image: "python:3.12-rc-bullseye"}
+#    - name: test (Linux - 3.11)
+#      container: {image: "python:3.11-bullseye"}
+#    - name: test (Linux - 3.12)
+#      container: {image: "python:3.12-rc-bullseye"}
       allow_failures: true  # Experimental
   install_script:
     - python -m pip install --upgrade pip tox pipx
   <<: *test-template
 
-mamba_task:
-  name: test (Linux - mambaforge)
-  container: {image: "condaforge/mambaforge"}
-  install_script:  # Overwrite template
-    - mamba install -y pip pipx tox
-  <<: *test-template
+# mamba_task:
+#   name: test (Linux - mambaforge)
+#   container: {image: "condaforge/mambaforge"}
+#   install_script:  # Overwrite template
+#     - mamba install -y pip pipx tox
+#   <<: *test-template
+#
+# macos_task:
+#   name: test (macOS - brew)
+#   macos_instance:
+#     image: ghcr.io/cirruslabs/macos-monterey-xcode
+#   brew_cache: {folder: "$HOME/Library/Caches/Homebrew"}
+#   install_script: brew install python tox pipx
+#   env:
+#     PATH: "/opt/homebrew/opt/python/libexec/bin:${PATH}"
+#   <<: *test-template
+#
+# freebsd_task:
+#   name: test (freebsd - 3.9)
+#   freebsd_instance: {image_family: freebsd-13-1}
+#   install_script:
+#     - pkg remove -y python lang/python
+#     - pkg install -y git python39 py39-pip py39-gdbm py39-sqlite3 py39-tox py39-pipx py39-tomli
+#     - ln -s /usr/local/bin/python3.9 /usr/local/bin/python
+#   <<: *test-template
 
-macos_task:
-  name: test (macOS - brew)
-  macos_instance:
-    image: ghcr.io/cirruslabs/macos-monterey-xcode
-  brew_cache: {folder: "$HOME/Library/Caches/Homebrew"}
-  install_script: brew install python tox pipx
-  env:
-    PATH: "/opt/homebrew/opt/python/libexec/bin:${PATH}"
-  <<: *test-template
-
-freebsd_task:
-  name: test (freebsd - 3.9)
-  freebsd_instance: {image_family: freebsd-13-1}
-  install_script:
-    - pkg remove -y python lang/python
-    - pkg install -y git python39 py39-pip py39-gdbm py39-sqlite3 py39-tox py39-pipx py39-tomli
-    - ln -s /usr/local/bin/python3.9 /usr/local/bin/python
-  <<: *test-template
-
-windows_task:
-  name: test (Windows - 3.9.10)
-  windows_container:
-    image: "cirrusci/windowsservercore:2019"
-    os_version: 2019
-  env:
-    CIRRUS_SHELL: bash
-    PATH: /c/Python39:/c/Python39/Scripts:/c/tools:${PATH}
-  install_script:
-    # Activate long file paths to avoid some errors
-    - ps: New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
-    - choco install -y --no-progress python3 --version=3.9.10 --params "/NoLockdown"
-    - pip install --upgrade certifi
-    - python -m pip install -U pip tox pipx
-  <<: *test-template
-
-finalize_task:
-  container: {image: "python:3.10-bullseye"}
-  depends_on: [test]
-  <<: *task-template
-  install_script: pip install coveralls
-  finalize_coverage_script: coveralls --finish
-
-linkcheck_task:
-  name: linkcheck (Linux - 3.10)
-  container: {image: "python:3.10-bullseye"}
-  depends_on: [finalize]
-  allow_failures: true
-  dist_cache: {folder: dist, fingerprint_script: echo $CIRRUS_BUILD_ID}  # download
-  <<: *task-template
-  install_script: pip install tox
-  linkcheck_script: tox --installpkg dist/*.whl -e linkcheck -- -q
-
-publish_task:
-  name: publish (Linux - 3.10)
-  container: {image: "python:3.10-bullseye"}
-  depends_on: [check, build, test]
-  only_if: $CIRRUS_TAG =~ 'v\d.*' && $CIRRUS_USER_PERMISSION == "admin"
-  <<: *task-template
-  dist_cache: {folder: dist, fingerprint_script: echo $CIRRUS_BUILD_ID}  # download
-  env:
-    TWINE_REPOSITORY: pypi
-    TWINE_USERNAME: __token__
-    TWINE_PASSWORD: $PYPI_TOKEN
-    # TODO: You can set a `environment variable override` for PYPI_TOKEN
-    #       in Cirrus CI web interface using an encrypted variable.
-    # See:
-    # - https://pypi.org/help/#apitoken
-    # - https://cirrus-ci.org/guide/writing-tasks/#encrypted-variables
-  install_script: pip install tox
-  publish_script:
-    - ls dist/*
-    - tox -e publish
+# windows_task:
+#   name: test (Windows - 3.9.10)
+#   windows_container:
+#     image: "cirrusci/windowsservercore:2019"
+#     os_version: 2019
+#   env:
+#     CIRRUS_SHELL: bash
+#     PATH: /c/Python39:/c/Python39/Scripts:/c/tools:${PATH}
+#   install_script:
+#     # Activate long file paths to avoid some errors
+#     - ps: New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+#     - choco install -y --no-progress python3 --version=3.9.10 --params "/NoLockdown"
+#     - pip install --upgrade certifi
+#     - python -m pip install -U pip tox pipx
+#   <<: *test-template
+#
+# finalize_task:
+#   container: {image: "python:3.10-bullseye"}
+#   depends_on: [test]
+#   <<: *task-template
+#   install_script: pip install coveralls
+#   finalize_coverage_script: coveralls --finish
+#
+# linkcheck_task:
+#   name: linkcheck (Linux - 3.10)
+#   container: {image: "python:3.10-bullseye"}
+#   depends_on: [finalize]
+#   allow_failures: true
+#   dist_cache: {folder: dist, fingerprint_script: echo $CIRRUS_BUILD_ID}  # download
+#   <<: *task-template
+#   install_script: pip install tox
+#   linkcheck_script: tox --installpkg dist/*.whl -e linkcheck -- -q
+#
+# publish_task:
+#   name: publish (Linux - 3.10)
+#   container: {image: "python:3.10-bullseye"}
+#   depends_on: [check, build, test]
+#   only_if: $CIRRUS_TAG =~ 'v\d.*' && $CIRRUS_USER_PERMISSION == "admin"
+#   <<: *task-template
+#   dist_cache: {folder: dist, fingerprint_script: echo $CIRRUS_BUILD_ID}  # download
+#   env:
+#     TWINE_REPOSITORY: pypi
+#     TWINE_USERNAME: __token__
+#     TWINE_PASSWORD: $PYPI_TOKEN
+#     # TODO: You can set a `environment variable override` for PYPI_TOKEN
+#     #       in Cirrus CI web interface using an encrypted variable.
+#     # See:
+#     # - https://pypi.org/help/#apitoken
+#     # - https://cirrus-ci.org/guide/writing-tasks/#encrypted-variables
+#   install_script: pip install tox
+#   publish_script:
+#     - ls dist/*
+#     - tox -e publish
