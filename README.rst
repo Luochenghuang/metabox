@@ -23,7 +23,7 @@
         :alt: Twitter
         :target: https://twitter.com/metabox
 
-.. figure:: images/metabox_bg.svg
+.. figure:: images/metabox.svg
    :width: 400
    :alt: metabox logo
 =======
