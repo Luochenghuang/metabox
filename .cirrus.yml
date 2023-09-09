@@ -52,9 +52,9 @@ env:
   dist_cache: {folder: dist, fingerprint_script: echo $CIRRUS_BUILD_ID}  # download
   test_script:
     - tox --installpkg dist/*.whl -- -rfEx --durations 10 --color yes
-  submit_coverage_script:
-    - pipx run coverage xml -o coverage.xml
-    - pipx run coveralls --submit coverage.xml
+#  submit_coverage_script:
+#    - pipx run coverage xml -o coverage.xml
+#    - pipx run coveralls --submit coverage.xml
 
 # Deep clone script for POSIX environments (required for setuptools-scm)
 .clone_script: &clone |
@@ -102,10 +102,10 @@ linux_task:
       container: {image: "python:3.9-bullseye"}
     - name: test (Linux - 3.10)
       container: {image: "python:3.10-bullseye"}
-#    - name: test (Linux - 3.11)
-#      container: {image: "python:3.11-bullseye"}
-#    - name: test (Linux - 3.12)
-#      container: {image: "python:3.12-rc-bullseye"}
+    - name: test (Linux - 3.11)
+      container: {image: "python:3.11-bullseye"}
+    - name: test (Linux - 3.12)
+      container: {image: "python:3.12-rc-bullseye"}
       allow_failures: true  # Experimental
   install_script:
     - python -m pip install --upgrade pip tox pipx
