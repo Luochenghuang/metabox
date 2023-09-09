@@ -63,6 +63,7 @@ Run the following commands to install `metabox`::
 Getting Started
 ===============
 `Tutorial 1: Metamodeling <https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_1_metamodeling.ipynb>`_
+`Tutorial 2: Lens Optimization and Exporting <https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_2_lens_optimization.ipynb>`_
 
 Making Changes & Contributing
 =============================
