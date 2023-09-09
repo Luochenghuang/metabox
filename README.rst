@@ -62,6 +62,7 @@ Run the following commands to install `metabox`::
 
 Getting Started
 ===============
+`Tutorial 1: Metamodeling <https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_1_metamodeling.ipynb>`_
 
 Making Changes & Contributing
 =============================
