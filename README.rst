@@ -87,6 +87,9 @@ Getting Started
 
 `Tutorial 7: Hologram Optimization <https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_7_holograms.ipynb>`_
 
+Documentation:
+https://metabox.readthedocs.io/en/latest/
+
 Making Changes & Contributing
 =============================
 
