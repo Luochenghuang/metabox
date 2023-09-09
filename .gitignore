@@ -23,6 +23,7 @@ __pycache__/*
 .vscode
 tags
 basis_files/
+tests/temp/
 
 # Package files
 *.egg
