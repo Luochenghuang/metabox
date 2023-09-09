@@ -66,10 +66,21 @@ Getting Started
 
 `Tutorial 2: Lens Optimization and Exporting <https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_2_lens_optimization.ipynb>`_
 
+`Tutorial 3: Optimization Serialization
+<https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_3_optimization_serialization.ipynb>`_
+
+`Tutorial 4: Zemax Binary2 Import <https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_4_binary2_zemax.ipynb>`_
+
+`Tutorial 5: Refractive Surfaces Simulation <https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_5_refractive_surfaces.ipynb>`_
+
+`Tutorial 6: Refractive Surfaces Optimization <https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_6_optimize_refractive.ipynb>`_
+
+`Tutorial 7: Hologram Optimization <https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_7_holograms.ipynb>`_
+
 Making Changes & Contributing
 =============================
 
-This project uses `pre-commit`_, please make sure to install it before making any
+This project uses `pre-commit`, please make sure to install it before making any
 changes::
 
     pip install pre-commit
