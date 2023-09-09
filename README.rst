@@ -29,9 +29,9 @@
    :alt: metabox logo
    :align: center
 
-    .. image:: https://api.cirrus-ci.com/github/Luochenghuang/metabox.svg
-    :alt: Built Status
-    :target: https://cirrus-ci.com/github/Luochenghuang/metabox
+.. image:: https://github.com/Luochenghuang/metabox/actions/workflows/ci.yml/badge.svg
+   :alt: Built Status
+   :target: https://https://github.com/Luochenghuang/metabox/actions/workflows/ci.yml
 .. image:: https://readthedocs.org/projects/metabox/badge/?version=latest
    :alt: ReadTheDocs
    :target: https://metabox.readthedocs.io/en/latest/
