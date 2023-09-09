@@ -24,8 +24,9 @@
         :target: https://twitter.com/metabox
 
 .. figure:: images/metabox.svg
-   :width: 400
+   :width: 500
    :alt: metabox logo
+   :align: center
 =======
 ``metabox``: A High-Level Python API for Diffractive Optical System Design
 =======
