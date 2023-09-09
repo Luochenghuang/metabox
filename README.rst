@@ -102,6 +102,8 @@ Citing ``metabox``
 ==================
 The manuscript is being prepared.
 
+Please email Luocheng Huang at `luocheng@uw.edu <luocheng@uw.edu>`_ if you have any suggestions or questions.
+
 =============================
 Making Changes & Contributing
 =============================
