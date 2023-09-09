@@ -1,0 +1,53 @@
+{
+    "proto_unit_cell": {
+        "layers": [
+            {
+                "material": 1,
+                "thickness": 8e-07,
+                "shapes": [
+                    {
+                        "material": {
+                            "name": "TiO2",
+                            "custom_csv_dir": "/home/huang/research/metabox/src/metabox/material_data"
+                        },
+                        "x_width": {
+                            "vmin": 0,
+                            "vmax": 3.5e-07,
+                            "name": "radius",
+                            "initial_value": null,
+                            "sampling": 300,
+                            "value": null
+                        },
+                        "y_width": {
+                            "vmin": 0,
+                            "vmax": 3.5e-07,
+                            "name": "radius",
+                            "initial_value": null,
+                            "sampling": 300,
+                            "value": null
+                        },
+                        "x_pos": 0,
+                        "y_pos": 0,
+                        "rotation_deg": 0
+                    }
+                ],
+                "enforce_4fold_symmetry": false
+            },
+            {
+                "material": {
+                    "name": "quartz",
+                    "custom_csv_dir": "/home/huang/research/metabox/src/metabox/material_data"
+                },
+                "thickness": 1e-06,
+                "shapes": [],
+                "enforce_4fold_symmetry": false
+            }
+        ],
+        "periodicity": [
+            3.5e-07,
+            3.5e-07
+        ],
+        "refl_index": 1.0,
+        "tran_index": 1.0
+    }
+}
