@@ -1,29 +1,3 @@
-.. These are examples of badges you might want to add to your README:
-   please update the URLs accordingly
-
-    .. image:: https://api.cirrus-ci.com/github/<USER>/metabox.svg?branch=main
-        :alt: Built Status
-        :target: https://cirrus-ci.com/github/<USER>/metabox
-    .. image:: https://readthedocs.org/projects/metabox/badge/?version=latest
-        :alt: ReadTheDocs
-        :target: https://metabox.readthedocs.io/en/stable/
-    .. image:: https://img.shields.io/coveralls/github/<USER>/metabox/main.svg
-        :alt: Coveralls
-        :target: https://coveralls.io/r/<USER>/metabox
-    .. image:: https://img.shields.io/pypi/v/metabox.svg
-        :alt: PyPI-Server
-        :target: https://pypi.org/project/metabox/
-    .. image:: https://img.shields.io/conda/vn/conda-forge/metabox.svg
-        :alt: Conda-Forge
-        :target: https://anaconda.org/conda-forge/metabox
-    .. image:: https://pepy.tech/badge/metabox/month
-        :alt: Monthly Downloads
-        :target: https://pepy.tech/project/metabox
-    .. image:: https://img.shields.io/twitter/url/http/shields.io.svg?style=social&label=Twitter
-        :alt: Twitter
-        :target: https://twitter.com/metabox
-
-
 .. figure:: images/metabox.svg
    :width: 500
    :alt: metabox logo
@@ -37,9 +11,10 @@
    :target: https://metabox.readthedocs.io/en/latest/
 .. image:: https://coveralls.io/repos/github/Luochenghuang/metabox/badge.svg?branch=main
    :target: https://coveralls.io/github/Luochenghuang/metabox?branch=main
-=======
+
+==========================================================================
 ``metabox``: A High-Level Python API for Diffractive Optical System Design
-=======
+==========================================================================
 
     metabox is a Python package built on TensorFlow, enabling the design, evaluation and optimization of complex diffractive optical systems with ease, flexibility, and high performance.
 
@@ -102,13 +77,21 @@ Documentation
 Contributors
 ============
 
+<<<<<<< HEAD
 * Luocheng Huang <luocheng@uw.edu>
+=======
+* Luocheng Huang luocheng@uw.edu
+>>>>>>> 8920798 (Update readme)
 
 ==================
 Citing ``metabox``
 ==================
 
+<<<<<<< HEAD
 The manuscript is currently being prepared.
+=======
+The manuscript is being prepared.
+>>>>>>> 8920798 (Update readme)
 
 =============================
 Making Changes & Contributing
