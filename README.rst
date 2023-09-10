@@ -65,7 +65,6 @@ Overall, `metabox` is a powerful tool for both beginners and experienced users i
 =======
 Install
 =======
-
 Run the following commands to install `metabox`::
 
     git clone https://github.com/Luochenghuang/metabox.git
@@ -75,6 +74,7 @@ Run the following commands to install `metabox`::
 ===============
 Getting Started
 ===============
+
 `Tutorial 1: Metamodeling <https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_1_metamodeling.ipynb>`_
 
 `Tutorial 2: Lens Optimization and Exporting <https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_2_lens_optimization.ipynb>`_
@@ -93,16 +93,22 @@ Getting Started
 =============
 Documentation
 =============
+
 `Module Reference <https://metabox.readthedocs.io/en/latest/api/modules.html>`_
 
 `Home Page <https://metabox.readthedocs.io/en/latest/>`_
 
+============
+Contributors
+============
+
+* Luocheng Huang <luocheng@uw.edu>
+
 ==================
 Citing ``metabox``
 ==================
-The manuscript is being prepared.
 
-Please email Luocheng Huang at `luocheng@uw.edu <luocheng@uw.edu>`_ if you have any suggestions or questions.
+The manuscript is currently being prepared.
 
 =============================
 Making Changes & Contributing
