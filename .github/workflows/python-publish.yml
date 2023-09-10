@@ -1,0 +1,38 @@
+# This workflow will upload a Python Package using Twine when a release is created
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python#publishing-to-package-registries
+
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: Upload Python Package
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with: {python-version: "3.8"}
+      - name: Retrieve pre-built distribution files
+        uses: actions/download-artifact@v3
+        with: {name: python-distribution-files, path: dist/}
+      - name: Publish Package
+        env:
+          # TODO: Set your PYPI_TOKEN as a secret using GitHub UI
+          # - https://pypi.org/help/#apitoken
+          # - https://docs.github.com/en/actions/security-guides/encrypted-secrets
+          TWINE_REPOSITORY: pypi
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: pipx run tox -e publish
