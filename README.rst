@@ -77,21 +77,13 @@ Documentation
 Contributors
 ============
 
-<<<<<<< HEAD
 * Luocheng Huang <luocheng@uw.edu>
-=======
-* Luocheng Huang luocheng@uw.edu
->>>>>>> 8920798 (Update readme)
 
 ==================
 Citing ``metabox``
 ==================
 
-<<<<<<< HEAD
-The manuscript is currently being prepared.
-=======
-The manuscript is being prepared.
->>>>>>> 8920798 (Update readme)
+The manuscript is in preparation.
 
 =============================
 Making Changes & Contributing
