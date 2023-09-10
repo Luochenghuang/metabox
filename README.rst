@@ -1,8 +1,10 @@
-.. figure:: images/metabox.svg
+.. figure:: https://github.com/Luochenghuang/metabox/blob/main/images/metabox.svg
    :width: 500
    :alt: metabox logo
    :align: center
 
+.. image:: https://badge.fury.io/py/metabox.svg
+    :target: https://badge.fury.io/py/metabox
 .. image:: https://github.com/Luochenghuang/metabox/actions/workflows/ci.yml/badge.svg
    :alt: Built Status
    :target: https://https://github.com/Luochenghuang/metabox/actions/workflows/ci.yml
@@ -40,7 +42,12 @@ Overall, `metabox` is a powerful tool for both beginners and experienced users i
 =======
 Install
 =======
-Run the following commands to install `metabox`::
+Run the following command to install `metabox`::
+
+    pip install metabox
+
+
+Alternatively, run the following commands to install `metabox` from github::
 
     git clone https://github.com/Luochenghuang/metabox.git
     cd metabox
