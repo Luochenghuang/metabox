@@ -26,7 +26,7 @@ The package is built with flexibility at its core, making it easy to add new com
 
 Key features of `metabox` include:
 
-- A `rcwa` solver, derived from rcwa_tf[1], for direct computation of meta-atoms' diffraction efficiency.
+- A `rcwa` solver, derived from `rcwa_tf <https://github.com/scolburn54/rcwa_tf>`_, for direct computation of meta-atoms' diffraction efficiency.
 - A built-in `raster` module for parameterizing meta-atoms' features.
 - An easy-to-use sampling system for features, which can train a metamodel to replace the `rcwa` solver, thus significantly speeding up simulations and optimization processes.
 - A module for sequential optics to model light propagation through the optical system.
@@ -36,8 +36,6 @@ Key features of `metabox` include:
 - An `export` module that allows for the export of the diffractive optical design to a `.gds` file for fabrication.
 
 Overall, `metabox` is a powerful tool for both beginners and experienced users in the field of optical system design. By simplifying and accelerating the design process, it paves the way for innovative developments in the optical industry.
-
-[1] Colburn, S., Majumdar, A. Inverse design and flexible parameterization of meta-optics using algorithmic differentiation. Commun Phys 4, 65 (2021).
 
 =======
 Install
@@ -84,7 +82,7 @@ Documentation
 Contributors
 ============
 
-* Luocheng Huang <luocheng@uw.edu>
+* Luocheng Huang: luocheng@uw.edu, https://github.com/Luochenghuang
 
 ==================
 Citing ``metabox``
