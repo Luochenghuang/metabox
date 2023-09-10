@@ -137,6 +137,7 @@ class AtomArray2D:
             only_feature: the only feature to show the structure of if not None.
                 Shows all features if None.
         """
+        import matplotlib.pyplot as plt
 
         n_pixels = int(np.sqrt(self.tensor.shape[-1]))
         diameter = self.period * n_pixels
@@ -769,6 +770,8 @@ class RefractiveEvenAsphere(Surface):
         )
 
     def show_sag(self):
+        import matplotlib.pyplot as plt
+
         sag = self.get_sag()
         # Get the other half
         sag = tf.concat([tf.reverse(sag, axis=[0]), sag], axis=0)
