@@ -54,21 +54,22 @@ Alternatively, run the following commands to install `metabox` from github::
 ===============
 Getting Started
 ===============
+Try out ``metabox`` for free on Google Colab. Here are some tutorials on Colab. You can find the local versions `here <https://github.com/Luochenghuang/metabox/tree/main/examples>`_.
 
-`Tutorial 1: Metamodeling <https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_1_metamodeling.ipynb>`_
+`Tutorial 1: Metamodeling <https://colab.research.google.com/drive/12DW9yZPtM90IO_DeU393wANLnnsgXMrM?authuser=1>`_
 
-`Tutorial 2: Lens Optimization and Exporting <https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_2_lens_optimization.ipynb>`_
+`Tutorial 2: Lens Optimization and Exporting <https://colab.research.google.com/drive/1dazKEjwD4f-65AOmrykuM2LLKpb_mz2Y?authuser=1>`_
 
 `Tutorial 3: Optimization Serialization
-<https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_3_optimization_serialization.ipynb>`_
+<https://colab.research.google.com/drive/1dfKwsOwsaqMLDy2ibaREksEbGFp4diKZ?authuser=1>`_
 
-`Tutorial 4: Zemax Binary2 Import <https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_4_binary2_zemax.ipynb>`_
+`Tutorial 4: Zemax Binary2 Import <https://colab.research.google.com/drive/1iOliSeB_Cg2XgjP1GgIXKJBqWoRthIMt?authuser=1>`_
 
-`Tutorial 5: Refractive Surfaces Simulation <https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_5_refractive_surfaces.ipynb>`_
+`Tutorial 5: Refractive Surfaces Simulation <https://colab.research.google.com/drive/1-16cP5P-OgjarXQnzieOBffGKcfJ_Zs5?authuser=1>`_
 
-`Tutorial 6: Refractive Surfaces Optimization <https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_6_optimize_refractive.ipynb>`_
+`Tutorial 6: Refractive Surfaces Optimization <https://colab.research.google.com/drive/1l1ekS4xEpvMIz_JPv-K4skFKQhsLBHdA?authuser=1>`_
 
-`Tutorial 7: Hologram Optimization <https://github.com/Luochenghuang/metabox/blob/main/examples/tutorial_7_holograms.ipynb>`_
+`Tutorial 7: Hologram Optimization <https://colab.research.google.com/drive/1-jX9WEyNQYG5klSog5ULoiN6jcXi5X5l?authuser=1>`_
 
 =============
 Documentation
