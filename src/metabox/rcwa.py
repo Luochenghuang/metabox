@@ -1,7 +1,9 @@
-import os, csv, tqdm, copy, dataclasses, gc, warnings, logging
+import os, csv, tqdm, copy, dataclasses, gc, warnings, logging, glob
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 from typing import Any, Dict, List, Tuple, Union
+
+_ROOT = os.path.abspath(os.path.dirname(__file__))
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -597,6 +599,22 @@ def _rasterize_layer(
     ).rasterize(layer.get_shapes(wavelength))
 
 
+def get_avaliable_materials(
+    custom_csv_dir: Union[str, None] = None
+) -> List[str]:
+    """Returns a list of avaliable material strings in the given directory."""
+
+    if custom_csv_dir is None:
+        custom_csv_dir = os.path.join(_ROOT, "material_data")
+
+    avail_materials_dir = glob.glob(os.path.join(custom_csv_dir, "*.csv"))
+    avali_materials = [
+        os.path.split(file_path)[-1].split(".")[0]
+        for file_path in avail_materials_dir
+    ]
+    return avali_materials
+
+
 @dataclasses.dataclass
 class Material:
     """Defines a material class.
@@ -605,30 +623,37 @@ class Material:
     given the wavelength of the simulation.
 
     Attributes:
-        name: the name of the material.
-        path_to_csv_file: the path to the csv file that contains the refractive
+        name: the name of the material. The .csv file name must be [name].csv
+            The file extension i.e. `.csv` must be in lowercase.
+        custom_csv_dir: the path to the csv file folder that contains the refractive
             index data. The data can be downloaded from refractiveindex.info.
             Just search for the material and download the csv file, under the
             "Data" section. Save the [CSV - comma separated] file as `csv_file_dir`.
     """
 
     name: str
-    path_to_csv_file: str
+    custom_csv_dir: Union[str, None] = None
 
     def __post_init__(self):
-        if not os.path.exists(self.path_to_csv_file):
-            raise ValueError(
-                f"The csv file for {self.name} does not exist in {self.path_to_csv_file}."
-            )
+        if self.custom_csv_dir is None:
+            self.custom_csv_dir = os.path.join(_ROOT, "material_data")
 
-        #
+        csv_dir = os.path.join(self.custom_csv_dir, self.name + ".csv")
+        if not os.path.exists(csv_dir):
+            avaliable_materials = get_avaliable_materials(self.custom_csv_dir)
+            default_mat_str = ", ".join(avaliable_materials)
+            raise ValueError(
+                f"The csv file for {self.name} does not exist in {self.custom_csv_dir}.\n"
+                f"Could not find {csv_dir}\n"
+                f"Avaliable materials: {default_mat_str}"
+            )
 
         self.wl_n = []
         self.wl_k = []
         self.n = []
         self.k = []
 
-        with open(self.path_to_csv_file, "r") as file:
+        with open(csv_dir, "r") as file:
             reader = csv.reader(file)
             mode = None
             for row in reader:
@@ -666,7 +691,7 @@ class Material:
             raise ValueError(f"Wavelength {wavelength} is out of range.")
 
         n_value = self.n_interp(wavelength)
-        if hasattr(self, 'k_interp') and self.k_interp is not None:
+        if hasattr(self, "k_interp") and self.k_interp is not None:
             k_value = self.k_interp(wavelength)
         else:
             k_value = 0j
