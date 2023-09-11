@@ -3,7 +3,7 @@ name: Feature request
 about: Suggest an idea for `metabox`
 title: ''
 labels: ''
-assignees: ''
+assignees: Luochenghuang
 
 ---
 
