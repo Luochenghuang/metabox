@@ -163,6 +163,10 @@ class AtomArray2D:
 
         for i in range(len(all_features)):
             feature_array = self.get_feature_map(all_features[i])
+            complex_str = ""
+            if np.iscomplexobj(feature_array):
+                complex_str = " (Real Part)"
+                feature_array = np.real(feature_array)
             f = plt.figure(figsize=(5, 5), dpi=100)
             ax = plt.axes([0, 0.05, 0.9, 0.9])
             im = ax.imshow(
@@ -176,7 +180,7 @@ class AtomArray2D:
             ax.set_xlabel("X")
             ax.set_ylabel("Y")
             ax.grid(False)
-            title = "Feature: {}".format(all_features[i])
+            title = "Feature{}: {}".format(complex_str, all_features[i])
             ax.set_title(title)
             cax = plt.axes([0.95, 0.05, 0.05, 0.9])
             plt.colorbar(mappable=im, cax=cax)
@@ -325,14 +329,14 @@ class AtomArray1D:
         tsnp[index, :] = feature_array
         self.tensor = tf.convert_to_tensor(tsnp)
 
-    def show_features(self, only_feature: Union[str, None] = None):
+    def show_feature_map(self, only_feature: Union[str, None] = None):
         """Shows the structure of the atom array.
 
         Args:
             only_feature: the only feature to show the structure of if not None.
                 Shows all features if None.
         """
-        self.expand_to_2d().show_features(only_feature)
+        self.expand_to_2d().show_feature_map(only_feature)
 
     def set_to_use_rcwa(self):
         """Skips the metamodel and directly simulate the atom array using RCWA.
@@ -1088,6 +1092,15 @@ class Metasurface(Surface):
                 "Both `metamodel` and `proto_unit_cell` are specified."
                 "Only ONE of `metamodel` or `proto_unit_cell` must be specified."
             )
+        if has_proto_unit_cell:
+            periodicity_tuple = (
+                self.proto_unit_cell.proto_unit_cell.periodicity
+            )
+            if periodicity_tuple[0] != periodicity_tuple[1]:
+                raise NotImplementedError(
+                    "The periodicity in the x and y directions must be the same."
+                    "Non square unitcell feature is not implemented yet."
+                )
         self.sim_config = rcwa.SimConfig(
             xy_harmonics=self.xy_harmonics,
             resolution=self.unit_cell_spatial_res,
@@ -2552,66 +2565,4 @@ def initialize_2d_atom_array_metamodel(
         tensor=dummy_atom_array.tensor,
         period=period,
         mmodel=mmodel,
-    )
-
-
-if __name__ == "__main__":
-    import os
-
-    os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-    import matplotlib.pyplot as plt
-    import numpy as np
-    import tensorflow as tf
-
-    from metabox import assembly, modeling, rcwa, utils
-
-    cell_period = 442e-9
-
-    radius = utils.Feature(vmin=0, vmax=221e-9, name="radius")
-    circle_1 = rcwa.Circle(index=2, radius=radius)
-    patterned_layer = rcwa.Layer(index=1, thickness=632e-9, shapes=[circle_1])
-    substrate = rcwa.Layer(index=1.5, thickness=632e-9)
-    cell = rcwa.UnitCell(
-        layers=[patterned_layer, substrate],
-        periodicity=(cell_period, cell_period),
-    )
-    protocell = rcwa.ProtoUnitCell(cell)
-
-    # Create a metasurface.
-    metasurface = assembly.Metasurface(
-        diameter=10e-6,  # 100 microns in diameter
-        refractive_index=1.0,  # the propagation medium after the metasurface
-        thickness=30e-6,  # the distance to the next surface
-        proto_unit_cell=protocell,
-        enable_propagator_cache=True,  # cache the propagators for faster computation
-        set_structures_variable=True,  # set the structures as a variable to optimize
-    )
-
-    # Define the incidence wavelengths and angles.
-    incidence = assembly.Incidence(
-        wavelength=np.linspace(400e-9, 700e-9, 1),
-        phi=[0],  # normal incidence
-        theta=[0],  # normal incidence
-    )
-
-    # Create a lens assembly.
-    lens_assembly = assembly.LensAssembly(
-        surfaces=[metasurface],  # Define the array of surfaces. Here only one.
-        incidence=incidence,  # Define the incidence.
-        figure_of_merit=assembly.FigureOfMerit.LOG_STREHL_RATIO,  # Define the figure of merit.
-        use_x_pol=True,  # Use the x-polarization.
-    )
-
-    # Use the Adam optimizer to optimize the lens assembly. This rate should be
-    # empirically determined.
-    optimizer = tf.keras.optimizers.Adam(learning_rate=3e-8)
-    optimizer.build(lens_assembly.get_variables())
-
-    # Optimize the lens assembly. Returns the best-optimized lens assembly and the loss history.
-    history = assembly.optimize_single_lens_assembly(
-        lens_assembly,
-        optimizer,
-        n_iter=20,
-        verbose=1,
-        keep_best=True,
     )

@@ -23,6 +23,8 @@ __pycache__/*
 .vscode
 tags
 basis_files/
+basis_data/
+gds_export/
 tests/temp/
 
 # Package files

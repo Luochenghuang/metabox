@@ -501,6 +501,7 @@ class ProtoUnitCell:
 
     def __post_init__(self):
         self.features = self.proto_unit_cell.get_cell_unique_features()
+        self.period = self.proto_unit_cell.periodicity[0]
 
     def generate_initial_variables(self, n_cells: int) -> tf.Tensor:
         """Returns a tensor of initial variable parameters for the unit cells.

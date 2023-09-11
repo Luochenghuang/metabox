@@ -22,8 +22,8 @@ def test_big_fat_test_to_make_sure_it_runs():
 
     # Define RCWA simulation configuration
     sim_config = rcwa.SimConfig(
-        xy_harmonics=(7, 7),  # Fourier orders in x and y
-        resolution=256,  # grid resolution per periodicity
+        xy_harmonics=(3, 3),  # Fourier orders in x and y
+        resolution=64,  # grid resolution per periodicity
         return_tensor=True,  # return tensor instead of a SimulationResult object
         minibatch_size=10,  # number of simulations to run in parallel
     )
@@ -72,16 +72,26 @@ def test_big_fat_test_to_make_sure_it_runs():
         "TiO2_square_metamodel", "./tests/temp"
     )
     # Define the bounds of the feature.
-    metamodel.set_feature_constraint("width", vmin=10e-9, vmax=330e-9)
+    metamodel.set_feature_constraint("radius", vmin=10e-9, vmax=330e-9)
 
     # Create a metasurface.
     metasurface = assembly.Metasurface(
-        diameter=10e-6,  # 100 microns in diameter
+        diameter=5e-6,  # 100 microns in diameter
         refractive_index=1.0,  # the propagation medium after the metasurface
         thickness=30e-6,  # the distance to the next surface
         metamodel=metamodel,  # the metamodel to use
         enable_propagator_cache=True,  # cache the propagators for faster computation
         set_structures_variable=True,  # set the structures as a variable to optimize
+        use_circular_expansions=True,
+    )
+    metasurface_2 = assembly.Metasurface(
+        diameter=5e-6,  # 100 microns in diameter
+        refractive_index=1.0,  # the propagation medium after the metasurface
+        thickness=30e-6,  # the distance to the next surface
+        metamodel=metamodel,  # the metamodel to use
+        enable_propagator_cache=True,  # cache the propagators for faster computation
+        set_structures_variable=True,  # set the structures as a variable to optimize
+        use_circular_expansions=False,
     )
 
     # Define the incidence wavelengths and angles.
@@ -93,7 +103,10 @@ def test_big_fat_test_to_make_sure_it_runs():
 
     # Create a lens assembly.
     lens_assembly = assembly.LensAssembly(
-        surfaces=[metasurface],  # Define the array of surfaces. Here only one.
+        surfaces=[
+            metasurface,
+            metasurface_2,
+        ],  # Define the array of surfaces. Here only one.
         incidence=incidence,  # Define the incidence.
         figure_of_merit=assembly.FigureOfMerit.LOG_STREHL_RATIO,  # Define the figure of merit.
     )
@@ -101,6 +114,7 @@ def test_big_fat_test_to_make_sure_it_runs():
     # Use the Adam optimizer to optimize the lens assembly. This rate should be
     # empirically determined.
     optimizer = tf.keras.optimizers.Adam(learning_rate=3e-8)
+    optimizer.build(lens_assembly.get_variables())
 
     # Optimize the lens assembly. Returns the best-optimized lens assembly and the loss history.
     history = assembly.optimize_single_lens_assembly(
@@ -110,3 +124,10 @@ def test_big_fat_test_to_make_sure_it_runs():
         verbose=1,
         keep_best=True,
     )
+
+    assembly.save_lens_assembly(
+        lens_assembly, "TiO2_square_lens", "./tests/temp", overwrite=True
+    )
+    assembly.load_lens_assembly("TiO2_square_lens", "./tests/temp")
+
+    metasurface.show_feature_map()
