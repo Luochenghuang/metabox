@@ -7,7 +7,7 @@
     :target: https://badge.fury.io/py/metabox
 .. image:: https://github.com/Luochenghuang/metabox/actions/workflows/ci.yml/badge.svg
    :alt: Built Status
-   :target: https://https://github.com/Luochenghuang/metabox/actions/workflows/ci.yml
+   :target: https://github.com/Luochenghuang/metabox/actions/workflows/ci.yml
 .. image:: https://readthedocs.org/projects/metabox/badge/?version=latest
    :alt: ReadTheDocs
    :target: https://metabox.readthedocs.io/en/latest/
@@ -107,4 +107,3 @@ To make an editable installation, run the following commands::
     git clone https://github.com/Luochenghuang/metabox.git
     cd metabox
     pip install -e .
-
