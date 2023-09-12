@@ -64,7 +64,10 @@ class AtomArray2D:
         Raises:
             ValueError: if the feature is not found in the atom array.
         """
-        all_features = copy.deepcopy(self.mmodel.protocell.features)
+        if self.use_mmodel:
+            all_features = copy.deepcopy(self.mmodel.protocell.features)
+        else:
+            all_features = copy.deepcopy(self.proto_unit_cell.features)
         if not feature_str in [f.name for f in all_features]:
             raise ValueError(
                 "Feature {} not found in the atom array.".format(feature_str)
@@ -243,7 +246,10 @@ class AtomArray1D:
         Raises:
             ValueError: if the feature is not found in the atom array.
         """
-        all_features = copy.deepcopy(self.mmodel.protocell.features)
+        if self.use_mmodel:
+            all_features = copy.deepcopy(self.mmodel.protocell.features)
+        else:
+            all_features = copy.deepcopy(self.proto_unit_cell.features)
         if not feature_str in [f.name for f in all_features]:
             raise ValueError(
                 "Feature {} not found in the atom array.".format(feature_str)
@@ -309,7 +315,7 @@ class AtomArray1D:
             np.ndarray: the feature array.
         """
         if self.use_mmodel:
-            index = self.find_feature_index_excluding_wavelength(feature_str)
+            index = self.find_feature_index(feature_str)
         else:
             index = self.proto_unit_cell.find_feature_index(feature_str)
         return self.tensor[index, :].numpy()
@@ -322,9 +328,9 @@ class AtomArray1D:
             feature_array: the feature array to set.
         """
         if self.use_mmodel:
-            index = self.find_feature_index_excluding_wavelength(feature)
+            index = self.find_feature_index(feature)
         else:
-            index = self.proto_unit_cell.find_feature_index(feature)
+            index = self.find_feature_index(feature)
         tsnp = self.tensor.numpy()
         tsnp[index, :] = feature_array
         self.tensor = tf.convert_to_tensor(tsnp)

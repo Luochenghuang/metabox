@@ -142,7 +142,7 @@ def test_big_fat_test_to_make_sure_it_runs():
 class TestAtomArray2D:
     @pytest.fixture
     def valid_tensor(self):
-        return tf.constant([1, 2, 3, 4, 5, 6, 7, 8, 9])
+        return tf.constant([[1, 2, 3, 4, 5, 6, 7, 8, 9]])
 
     @pytest.fixture
     def valid_mmodel(self):
@@ -212,11 +212,22 @@ class TestAtomArray2D:
                 "Without music, life would be a mistake."
             )
 
+    def test_set_feature_map_metamodel(self, valid_tensor, valid_mmodel):
+        atom_array = AtomArray2D(valid_tensor, period=1.0, mmodel=valid_mmodel)
+        atom_array.set_feature_map("radius", np.ones((3, 3)))
+        assert atom_array.tensor.shape == (1, 9)
+
+    def test_set_feature_map_ProtoUnitCell(self, valid_tensor, valid_proto_unit_cell):
+        atom_array = AtomArray2D(valid_tensor, period=1.0, proto_unit_cell=valid_proto_unit_cell)
+        atom_array.set_feature_map("radius", np.ones((3, 3)))
+        assert atom_array.tensor.shape == (1, 9)
+
+
 
 class TestAtomArray1D:
     @pytest.fixture
     def valid_tensor(self):
-        return tf.constant([1, 2, 3, 4, 5, 6])
+        return tf.constant([[1, 2, 3, 4, 5, 6]])
 
     @pytest.fixture
     def valid_mmodel(self):
@@ -285,6 +296,16 @@ class TestAtomArray1D:
             atom_array.find_feature_index(
                 "That which does not kill us makes us stronger."
             )
+
+    def test_set_feature_map(self, valid_tensor, valid_mmodel):
+        atom_array = AtomArray1D(valid_tensor, period=1.0, mmodel=valid_mmodel)
+        atom_array.set_feature_map("radius", np.ones((1, 6)))
+        assert atom_array.tensor.shape == (1, 6)
+
+    def test_set_feature_map_puc(self, valid_tensor, valid_proto_unit_cell):
+        atom_array = AtomArray1D(valid_tensor, period=1.0, proto_unit_cell=valid_proto_unit_cell)
+        atom_array.set_feature_map("radius", np.ones((1, 6)))
+        assert atom_array.tensor.shape == (1, 6)
 
 
 def test_surface():
