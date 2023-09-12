@@ -55,7 +55,7 @@ class AtomArray2D:
             )
         self.use_mmodel = has_mmodel
 
-    def find_feature_index_excluding_wavelength(self, feature_str: str):
+    def find_feature_index(self, feature_str: str):
         """Returns the index of the feature in the structure tensor.
 
         Args:
@@ -93,7 +93,7 @@ class AtomArray2D:
             tf.Tensor: the structure of the atom array.
         """
         if self.use_mmodel:
-            index = self.find_feature_index_excluding_wavelength(feature)
+            index = self.find_feature_index(feature)
         else:
             index = self.proto_unit_cell.get_feature_index(feature)
         matrix_width = int(np.sqrt(self.tensor.shape[-1]))
@@ -116,7 +116,7 @@ class AtomArray2D:
                 "Changing the feature map of a tf.Variable is not implemented yet."
             )
 
-        index = self.find_feature_index_excluding_wavelength(feature)
+        index = self.find_feature_index(feature)
         matrix_width = int(np.sqrt(self.tensor.shape[-1]))
 
         if np.shape(new_values) != (matrix_width, matrix_width):
@@ -234,7 +234,7 @@ class AtomArray1D:
         self.use_mmodel = has_mmodel
         self.cached_fields = None
 
-    def find_feature_index_excluding_wavelength(self, feature_str: str):
+    def find_feature_index(self, feature_str: str):
         """Returns the index of the feature in the structure tensor.
 
         Args:

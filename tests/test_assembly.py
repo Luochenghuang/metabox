@@ -1,14 +1,15 @@
 import pytest, os
 import numpy as np
 import tensorflow as tf
-from metabox import rcwa, utils, modeling, assembly
+from metabox import rcwa, utils, modeling, assembly, propagation
+from metabox.assembly import AtomArray2D, AtomArray1D
 
 __author__ = "Luocheng Huang"
 __copyright__ = "Luocheng Huang"
 __license__ = "MIT"
 
 
-def test_big_fat_test_to_make_sure_it_runs():
+def test_rcwa():
     # Now let's define some materials for our simulations
     TiO2 = rcwa.Material("Si3N4")
     quartz = rcwa.Material("quartz")
@@ -52,6 +53,9 @@ def test_big_fat_test_to_make_sure_it_runs():
     sim_lib.save("TiO2_square_sim_lib", "./tests/temp", overwrite=True)
     # Now that we have saved our simulations, we can load them back in
     # and use them to train a metamodel neural network.
+
+
+def test_metamodel():
     loaded_sim_lib = modeling.load_simulation_library(
         "TiO2_square_sim_lib", "./tests/temp"
     )
@@ -67,6 +71,8 @@ def test_big_fat_test_to_make_sure_it_runs():
     )
     model.save("TiO2_square_metamodel", "./tests/temp", overwrite=True)
 
+
+def test_big_fat_test_to_make_sure_it_runs():
     # Load the metamodel we created in tutorial 1.
     metamodel = modeling.load_metamodel(
         "TiO2_square_metamodel", "./tests/temp"
@@ -131,3 +137,197 @@ def test_big_fat_test_to_make_sure_it_runs():
     assembly.load_lens_assembly("TiO2_square_lens", "./tests/temp")
 
     metasurface.show_feature_map()
+
+
+class TestAtomArray2D:
+    @pytest.fixture
+    def valid_tensor(self):
+        return tf.constant([1, 2, 3, 4, 5, 6, 7, 8, 9])
+
+    @pytest.fixture
+    def valid_mmodel(self):
+        return modeling.load_metamodel("TiO2_square_metamodel", "./tests/temp")
+
+    @pytest.fixture
+    def valid_proto_unit_cell(self):
+        # Now let's define some materials for our simulations
+        TiO2 = rcwa.Material("Si3N4")
+        quartz = rcwa.Material("quartz")
+
+        # Define the unit cell periodicity
+        periodicity = (350e-9, 350e-9)
+
+        # Instantiate a `Feature` to parameterize the width of the square
+        width = utils.Feature(
+            vmin=0, vmax=periodicity[0], name="radius", sampling=10
+        )
+        square = rcwa.Rectangle(material=TiO2, x_width=width, y_width=width)
+        patterned_layer = rcwa.Layer(
+            material=1, thickness=800e-9, shapes=[square]
+        )
+        substrate = rcwa.Layer(material=quartz, thickness=1000e-9)
+        cell = rcwa.UnitCell(
+            layers=[patterned_layer, substrate],
+            periodicity=periodicity,
+        )
+        protocell = rcwa.ProtoUnitCell(cell)
+        return protocell
+
+    def test_init_with_mmodel(self, valid_tensor, valid_mmodel):
+        atom_array = AtomArray2D(valid_tensor, period=1.0, mmodel=valid_mmodel)
+        assert atom_array.use_mmodel
+
+    def test_init_with_proto_unit_cell(
+        self, valid_tensor, valid_proto_unit_cell
+    ):
+        atom_array = AtomArray2D(
+            valid_tensor, period=1.0, proto_unit_cell=valid_proto_unit_cell
+        )
+        assert not atom_array.use_mmodel
+
+    def test_init_with_both_mmodel_and_proto_unit_cell(
+        self, valid_tensor, valid_mmodel, valid_proto_unit_cell
+    ):
+        with pytest.raises(ValueError):
+            AtomArray2D(
+                valid_tensor,
+                period=1.0,
+                mmodel=valid_mmodel,
+                proto_unit_cell=valid_proto_unit_cell,
+            )
+
+    def test_init_without_mmodel_and_proto_unit_cell(self, valid_tensor):
+        with pytest.raises(ValueError):
+            AtomArray2D(valid_tensor, period=1.0)
+
+    def test_find_feature_valid_input(self, valid_tensor, valid_mmodel):
+        atom_array = AtomArray2D(valid_tensor, period=1.0, mmodel=valid_mmodel)
+        index = atom_array.find_feature_index("radius")
+        assert index == 0
+
+    def test_find_feature_invalid_input(self, valid_tensor, valid_mmodel):
+        atom_array = AtomArray2D(valid_tensor, period=1.0, mmodel=valid_mmodel)
+        with pytest.raises(ValueError):
+            atom_array.find_feature_index(
+                "Without music, life would be a mistake."
+            )
+
+
+class TestAtomArray1D:
+    @pytest.fixture
+    def valid_tensor(self):
+        return tf.constant([1, 2, 3, 4, 5, 6])
+
+    @pytest.fixture
+    def valid_mmodel(self):
+        return modeling.load_metamodel("TiO2_square_metamodel", "./tests/temp")
+
+    @pytest.fixture
+    def valid_proto_unit_cell(self):
+        # Now let's define some materials for our simulations
+        TiO2 = rcwa.Material("Si3N4")
+        quartz = rcwa.Material("quartz")
+
+        # Define the unit cell periodicity
+        periodicity = (350e-9, 350e-9)
+
+        # Instantiate a `Feature` to parameterize the width of the square
+        width = utils.Feature(
+            vmin=0, vmax=periodicity[0], name="radius", sampling=10
+        )
+        square = rcwa.Rectangle(material=TiO2, x_width=width, y_width=width)
+        patterned_layer = rcwa.Layer(
+            material=1, thickness=800e-9, shapes=[square]
+        )
+        substrate = rcwa.Layer(material=quartz, thickness=1000e-9)
+        cell = rcwa.UnitCell(
+            layers=[patterned_layer, substrate],
+            periodicity=periodicity,
+        )
+        protocell = rcwa.ProtoUnitCell(cell)
+        return protocell
+
+    def test_init_with_mmodel(self, valid_tensor, valid_mmodel):
+        atom_array = AtomArray1D(valid_tensor, period=1.0, mmodel=valid_mmodel)
+        assert atom_array.use_mmodel
+
+    def test_init_with_proto_unit_cell(
+        self, valid_tensor, valid_proto_unit_cell
+    ):
+        atom_array = AtomArray1D(
+            valid_tensor, period=1.0, proto_unit_cell=valid_proto_unit_cell
+        )
+        assert not atom_array.use_mmodel
+
+    def test_init_with_both_mmodel_and_proto_unit_cell(
+        self, valid_tensor, valid_mmodel, valid_proto_unit_cell
+    ):
+        with pytest.raises(ValueError):
+            AtomArray2D(
+                valid_tensor,
+                period=1.0,
+                mmodel=valid_mmodel,
+                proto_unit_cell=valid_proto_unit_cell,
+            )
+
+    def test_init_without_mmodel_and_proto_unit_cell(self, valid_tensor):
+        with pytest.raises(ValueError):
+            AtomArray1D(valid_tensor, period=1.0)
+
+    def test_find_feature_valid_input(self, valid_tensor, valid_mmodel):
+        atom_array = AtomArray1D(valid_tensor, period=1.0, mmodel=valid_mmodel)
+        index = atom_array.find_feature_index("radius")
+        assert index == 0
+
+    def test_find_feature_invalid_input(self, valid_tensor, valid_mmodel):
+        atom_array = AtomArray1D(valid_tensor, period=1.0, mmodel=valid_mmodel)
+        with pytest.raises(ValueError):
+            atom_array.find_feature_index(
+                "That which does not kill us makes us stronger."
+            )
+
+
+def test_surface():
+    s = assembly.Surface(1.0, 1.5, 0.1)
+    assert s.diameter == 1.0
+    assert s.refractive_index == 1.5
+    assert s.thickness == 0.1
+    assert s.get_penalty() == 0.0
+
+
+def test_aperture():
+    a = assembly.Aperture(1.0, 1.5, 0.1, 0.01)
+    assert a.diameter == 1.0
+    assert a.refractive_index == 1.5
+    assert a.thickness == 0.1
+    assert a.periodicity == 0.01
+    assert a.enable_propagator_cache == False
+    assert a.store_end_field == False
+    assert a.n_pixels_radial == 50
+
+
+def test_get_modulation_2d():
+    a = assembly.Aperture(1.0, 1.5, 0.1, 0.01)
+    incidence = utils.Incidence(wavelength=[500e-9], theta=[0], phi=[0])
+    mod_2d = a.get_modulation_2d(incidence)
+    assert mod_2d.shape == (1, 100, 100)
+
+
+def test_get_end_field():
+    a = assembly.Aperture(1.0, 1.5, 0.1, 0.01)
+    incidence = utils.Incidence(wavelength=[500e-9], theta=[0], phi=[0])
+    incident_field = propagation.Field2D(
+        tensor=np.ones((1, 100, 100)),
+        period=0.01,
+        n_pixels=100,
+        wavelength=[500e-9],
+        theta=[0],
+        phi=[0],
+        upsampling=1,
+        use_antialiasing=True,
+        use_padding=True,
+    )
+    end_field = a.get_end_field(
+        incidence, incident_field, 1.0, use_padding=True, use_x_pol=True
+    )
+    assert end_field.tensor.shape == (1, 100, 100)
