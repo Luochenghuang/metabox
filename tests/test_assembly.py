@@ -2,7 +2,7 @@ import pytest, os
 import numpy as np
 import tensorflow as tf
 from metabox import rcwa, utils, modeling, assembly, propagation
-from metabox.assembly import AtomArray2D, AtomArray1D
+from metabox.assembly import AtomArray2D, AtomArray1D, CustomFigureOfMerit
 
 __author__ = "Luocheng Huang"
 __copyright__ = "Luocheng Huang"
@@ -217,11 +217,19 @@ class TestAtomArray2D:
         atom_array.set_feature_map("radius", np.ones((3, 3)))
         assert atom_array.tensor.shape == (1, 9)
 
-    def test_set_feature_map_ProtoUnitCell(self, valid_tensor, valid_proto_unit_cell):
-        atom_array = AtomArray2D(valid_tensor, period=1.0, proto_unit_cell=valid_proto_unit_cell)
+    def test_set_feature_map_ProtoUnitCell(
+        self, valid_tensor, valid_proto_unit_cell
+    ):
+        atom_array = AtomArray2D(
+            valid_tensor, period=1.0, proto_unit_cell=valid_proto_unit_cell
+        )
         atom_array.set_feature_map("radius", np.ones((3, 3)))
         assert atom_array.tensor.shape == (1, 9)
 
+    def test_set_to_use_rcwa(self, valid_tensor, valid_mmodel):
+        atom_array = AtomArray2D(valid_tensor, period=1.0, mmodel=valid_mmodel)
+        atom_array.set_to_use_rcwa()
+        assert not atom_array.use_mmodel
 
 
 class TestAtomArray1D:
@@ -303,9 +311,16 @@ class TestAtomArray1D:
         assert atom_array.tensor.shape == (1, 6)
 
     def test_set_feature_map_puc(self, valid_tensor, valid_proto_unit_cell):
-        atom_array = AtomArray1D(valid_tensor, period=1.0, proto_unit_cell=valid_proto_unit_cell)
+        atom_array = AtomArray1D(
+            valid_tensor, period=1.0, proto_unit_cell=valid_proto_unit_cell
+        )
         atom_array.set_feature_map("radius", np.ones((1, 6)))
         assert atom_array.tensor.shape == (1, 6)
+
+    def test_set_to_use_rcwa(self, valid_tensor, valid_mmodel):
+        atom_array = AtomArray1D(valid_tensor, period=1.0, mmodel=valid_mmodel)
+        atom_array.set_to_use_rcwa()
+        assert not atom_array.use_mmodel
 
 
 def test_surface():
@@ -352,3 +367,214 @@ def test_get_end_field():
         incidence, incident_field, 1.0, use_padding=True, use_x_pol=True
     )
     assert end_field.tensor.shape == (1, 100, 100)
+
+
+class TestAmplitudeMask:
+    def test_post_init(self):
+        mask = assembly.AmplitudeMask(
+            4.0, 1.0, 1.0, 1.0, 1.0, True, True, False
+        )
+        assert mask.n_pixels_radial == 2
+        assert mask.propagator_cache == (None, None)
+        assert mask.variables == []
+
+    def test_optimizer_hook(self):
+        mask = assembly.AmplitudeMask(
+            4.0, 1.0, 1.0, 1.0, 1.0, True, True, False, 0.5
+        )
+        mask.optimizer_hook()
+        assert mask.threshold_param == 1.5
+
+    def test_get_modulation_2d(self):
+        mask = assembly.AmplitudeMask(
+            4.0, 1.0, 1.0, 1.0, 1.0, True, True, False
+        )
+        incidence = utils.Incidence(wavelength=[1])
+        result = mask.get_modulation_2d(incidence)
+        assert isinstance(result, tf.Tensor)
+        assert result.shape == (1, 4, 4)
+
+    def test_get_end_field(self):
+        mask = assembly.AmplitudeMask(
+            4.0, 1.0, 1.0, 1.0, 1.0, True, True, False
+        )
+        incidence = utils.Incidence(wavelength=[1], theta=[0], phi=[0])
+        incident_field = propagation.Field2D(
+            4,
+            [1],
+            [0],
+            [0],
+            1,
+            True,
+            True,
+            True,
+            tf.cast(tf.ones((1, 4, 4)), tf.complex64),
+        )
+        result = mask.get_end_field(incidence, incident_field, 1.0)
+        assert isinstance(result, propagation.Field2D)
+
+
+def test_RefractiveEvenAsphere():
+    incidence = assembly.Incidence(
+        wavelength=[700e-9],
+        theta=[0],
+        phi=[0],
+    )
+
+    asph1 = assembly.RefractiveEvenAsphere(
+        diameter=0.1e-3,
+        refractive_index=1.5131,
+        thickness=0.1e-3,
+        periodicity=0.25e-6,
+        init_coeff=[6.124, 97.618],
+    )
+
+    asph2 = assembly.RefractiveEvenAsphere(
+        diameter=0.2e-3,
+        refractive_index=1.0,
+        thickness=0.1e-3,
+        periodicity=0.25e-6,
+        init_coeff=[0.731, -189.048],
+    )
+
+    # Create a lens assembly.
+    lens_assembly = assembly.LensAssembly(
+        surfaces=[asph1, asph2],
+        incidence=incidence,  # Define the incidence.
+    )
+
+    asph1.show_sag()
+    end_field = lens_assembly.compute_field_on_sensor()
+    assert isinstance(end_field, propagation.Field2D)
+
+
+def test_Binary2():
+    incidence = assembly.Incidence(
+        wavelength=[700e-9],
+        theta=[0, 5, 10],
+        phi=[0],
+    )
+
+    # Define the binary surface with the coefficients.
+    bin1 = assembly.Binary2(
+        diameter=40e-6,
+        refractive_index=1.0,
+        thickness=0.1e-3,
+        periodicity=10e-6,
+        init_coeff=[6.763, 2.1, -0.032, 0.055, -7.122e-3],
+    )
+
+    bin2 = assembly.Binary2(
+        diameter=40e-6,
+        refractive_index=1.0,
+        thickness=0.2e-3,
+        periodicity=10e-6,
+        init_coeff=[-249.003, -10.79, -0.16, 0.24, 0.12],
+    )
+
+    # Create a lens assembly.
+    lens_assembly = assembly.LensAssembly(
+        surfaces=[bin1, bin2],  # Define the array of surfaces. Here only one.
+        incidence=incidence,  # Define the incidence.
+    )
+
+    end_field = lens_assembly.compute_field_on_sensor()
+    assert isinstance(end_field, propagation.Field2D)
+
+
+class TestCustomFOM:
+    def test_initialization(self):
+        # Test that the class is initialized properly with valid inputs
+        fom = CustomFigureOfMerit("5 + strehl_ratio")
+        assert fom.expression == "5 + strehl_ratio"
+
+        # Test that the class raises an error if the expression is None
+        with pytest.raises(ValueError):
+            fom = CustomFigureOfMerit(None)
+
+    def test_get_validation_errors(self):
+        # Test that the method raises an error for invalid characters in the expression
+        with pytest.raises(ValueError) as excinfo:
+            fom = CustomFigureOfMerit("psf + strehl_ratios")
+        assert "Ensure you are using" in str(excinfo.value)
+
+        # Test that the method does not raise an error for valid characters in the expression
+        fom = CustomFigureOfMerit("psf + strehl_ratio")
+        errors = fom.get_validation_errors()
+        assert len(errors) == 0
+
+    def test_is_valid_expression(self):
+        # Test that the method returns True for a valid expression
+        fom = CustomFigureOfMerit("reduce_sum(psf)")
+        assert fom.is_valid_expression(fom.expression)
+
+    def test_custom_data(self):
+        # Test that the class handles custom data properly
+        data = {
+            "r_targ": tf.ones((1, 2, 2)),
+            "g_targ": tf.ones((1, 2, 2)),
+            "b_targ": tf.ones((1, 2, 2)),
+        }
+        expression = "-log(r_targ.dist(psf[0, :, :]) + g_targ.dist(psf[1, :, :]) + b_targ.dist(psf[2, :, :]))"
+        fom = CustomFigureOfMerit(expression, data)
+        assert "r_targ" in fom.data
+        assert fom.is_valid_expression(fom.expression)
+
+
+def test_cartesian_distance():
+    # Define the inputs
+    psf = tf.constant([[1.0, 2.0], [3.0, 4.0]], dtype=tf.float32)
+    intensity_target = assembly.IntensityTarget(psf * 2, crop_factor=0.9)
+
+    # Call the function
+    distance = assembly.cartesian_distance(intensity_target, psf)
+
+    # Check that the returned value is a tensor.
+    assert isinstance(distance, tf.Tensor)
+
+    # Check that the returned value is a scalar.
+    assert distance.shape == ()
+
+    # Check that the returned value is non-negative.
+    assert distance.numpy() >= 0
+
+
+def test_optimize_multiple_LA():
+    metamodel = modeling.load_metamodel(
+        "TiO2_square_metamodel", "./tests/temp"
+    )
+
+    # Create a metasurface.
+    metasurface = assembly.Metasurface(
+        diameter=4e-6,  # 100 microns in diameter
+        refractive_index=1.0,  # the propagation medium after the metasurface
+        thickness=200e-6,  # the distance to the next surface
+        metamodel=metamodel,  # the metamodel to use
+        enable_propagator_cache=False,  # cache the propagators for faster computation
+        set_structures_variable=True,  # set the structures as a variable to optimize
+    )
+
+    # Define the incidence wavelengths and angles.
+    incidence = assembly.Incidence(
+        wavelength=np.linspace(
+            0.4e-6, 0.6e-6, 2
+        ),  # 11 wavelengths between 400 and 800 nm
+        phi=[0, 5],  # normal incidence
+        theta=[0, 5],  # normal incidence
+    )
+
+    # Create a lens assembly.
+    batched_lens_assembly = assembly.LensAssembly(
+        surfaces=[metasurface],  # Define the array of surfaces. Here only one.
+        incidence=incidence,  # Define the incidence.
+        figure_of_merit=assembly.FigureOfMerit.LOG_STREHL_RATIO,  # Define the figure of merit.
+        use_padding=True,
+    )
+
+    unbatched_assemblies = assembly.unbatch_lens_assembley(
+        batched_lens_assembly
+    )
+    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-9)
+    history = assembly.optimize_multiple_lens_assemblies(
+        unbatched_assemblies, optimizer, n_iter=2, verbose=1
+    )

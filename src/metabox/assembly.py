@@ -1410,7 +1410,7 @@ class CustomFigureOfMerit:
         if not self.is_valid_expression(self.expression):
             validation_errors.append(
                 "Ensure you are only using allowed operators: +, -, *, /, (, ), :.\n"
-                f"And the following functions: {utils.TF_FUNCTIONS + 'log'}.\n"
+                f"And the following functions: {utils.TF_FUNCTIONS + ['log']}.\n"
                 "Ensure you are using the allowed variables: psf, strehl_ratio, max_intensity, center_intensity, ideal_mtf."
             )
 
