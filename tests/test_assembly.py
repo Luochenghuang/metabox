@@ -26,7 +26,7 @@ def test_rcwa():
         xy_harmonics=(3, 3),  # Fourier orders in x and y
         resolution=64,  # grid resolution per periodicity
         return_tensor=True,  # return tensor instead of a SimulationResult object
-        minibatch_size=10,  # number of simulations to run in parallel
+        minibatch_size=4,  # number of simulations to run in parallel
     )
 
     # Instantiate a `Feature` to parameterize the width of the square
@@ -107,6 +107,8 @@ def test_big_fat_test_to_make_sure_it_runs():
         theta=[0],  # normal incidence
     )
 
+    # custom figure of merit
+    fom = assembly.CustomFigureOfMerit("reduce_sum(strehl_ratio)")
     # Create a lens assembly.
     lens_assembly = assembly.LensAssembly(
         surfaces=[
@@ -114,7 +116,7 @@ def test_big_fat_test_to_make_sure_it_runs():
             metasurface_2,
         ],  # Define the array of surfaces. Here only one.
         incidence=incidence,  # Define the incidence.
-        figure_of_merit=assembly.FigureOfMerit.LOG_STREHL_RATIO,  # Define the figure of merit.
+        figure_of_merit=fom,  # Define the figure of merit.
     )
 
     # Use the Adam optimizer to optimize the lens assembly. This rate should be

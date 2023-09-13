@@ -1,8 +1,6 @@
 import pytest
-import tensorflow as tf
 import numpy as np
-from metabox import rcwa
-from metabox.utils import Incidence, Feature
+from metabox import rcwa, utils, modeling
 
 __author__ = "Luocheng Huang"
 __copyright__ = "Luocheng Huang"
@@ -10,7 +8,7 @@ __license__ = "MIT"
 
 
 def test_get_features():
-    feature = Feature(0, 1, "feature")
+    feature = rcwa.Feature(0, 1, "feature")
     rect = rcwa.Rectangle(
         material=1.0,
         x_width=1,
@@ -20,7 +18,7 @@ def test_get_features():
     features = list(rect.get_features())
     assert len(features) == 0  # no Feature in Shape
 
-    feature = Feature(0, 1, "a feature")
+    feature = rcwa.Feature(0, 1, "a feature")
     rect = rcwa.Rectangle(
         material=1.0,
         x_width=feature,
@@ -80,17 +78,17 @@ def test_Circle(radius, x_pos, y_pos):
 
 
 def test_PeriodicUnitCell():
-    material = Feature(1, 2, "material")
-    radius = Feature(0.5, 1.5, "radius")
-    x_pos = Feature(-1, 1, "x_pos")
-    y_pos = Feature(-1, 1, "y_pos")
+    material = rcwa.Feature(1, 2, "material")
+    radius = rcwa.Feature(0.5, 1.5, "radius")
+    x_pos = rcwa.Feature(-1, 1, "x_pos")
+    y_pos = rcwa.Feature(-1, 1, "y_pos")
     circle = rcwa.Circle(
         material=material, radius=radius, x_pos=x_pos, y_pos=y_pos
     )
 
-    x_width = Feature(1, 2, "x_width")
-    y_width = Feature(1, 2, "y_width")
-    rotation_deg = Feature(0, 180, "rotation_deg")
+    x_width = rcwa.Feature(1, 2, "x_width")
+    y_width = rcwa.Feature(1, 2, "y_width")
+    rotation_deg = rcwa.Feature(0, 180, "rotation_deg")
     rectangle = rcwa.Rectangle(
         material=material,
         x_width=x_width,
@@ -98,14 +96,17 @@ def test_PeriodicUnitCell():
         rotation_deg=rotation_deg,
     )
 
-    thickness = Feature(0, 1, "thickness")
+    thickness = rcwa.Feature(0, 1, "thickness")
     layer = rcwa.Layer(
         material=material, thickness=thickness, shapes=(circle, rectangle)
     )
 
-    periodicity = (Feature(1, 2, "x_period"), Feature(1, 2, "y_period"))
-    refl_index = Feature(1, 2, "refl_index")
-    tran_index = Feature(1, 2, "tran_index")
+    periodicity = (
+        rcwa.Feature(1, 2, "x_period"),
+        rcwa.Feature(1, 2, "y_period"),
+    )
+    refl_index = rcwa.Feature(1, 2, "refl_index")
+    tran_index = rcwa.Feature(1, 2, "tran_index")
     unit_cell = rcwa.UnitCell(
         layers=[layer, layer],
         periodicity=periodicity,
@@ -132,3 +133,71 @@ def test_SimConfig():
     assert sim_config.xy_harmonics == xy_harmonics
     assert sim_config.resolution == resolution
     assert sim_config.minibatch_size == minibatch_size
+
+
+class TestParameterizable:
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
+        self.feature1 = rcwa.Feature(0.0, 1.0, "feature1")
+        self.feature2 = rcwa.Feature(0.0, 1.0, "feature2")
+        self.parameterizable = rcwa.Polygon(
+            1.0, [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)]
+        )
+
+    def test_initialize_values(self):
+        with pytest.raises(ValueError):
+            self.parameterizable.initialize_values(("invalid",))
+
+        with pytest.raises(ValueError):
+            self.parameterizable.initialize_values(
+                ([self.feature1], [0.5, 0.6])
+            )
+
+        self.parameterizable.initialize_values(
+            ([self.feature1, self.feature2], [0.5, 0.6])
+        )
+        assert self.feature1.initial_value == 0.5
+        assert self.feature2.initial_value == 0.6
+
+    def test_replace_feature_with_value(self):
+        self.parameterizable.initialize_values(
+            ([self.feature1, self.feature2], [0.5, 0.6])
+        )
+        self.parameterizable.replace_feature_with_value()
+
+
+class TestShape:
+    def test_shape_initialization(self):
+        shape = rcwa.Shape(None)
+        assert shape.material == None
+
+    def test_polygon(self):
+        vertices = [(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)]
+        polygon = rcwa.Polygon(1.0, vertices)
+        assert polygon.material == 1.0
+        assert polygon.vertices == vertices
+
+    def test_circle(self):
+        circle = rcwa.Circle(1.0, 1.0, 0.0, 0.0)
+        assert circle.material == 1.0
+        assert circle.radius == 1.0
+        assert circle.x_pos == 0.0
+        assert circle.y_pos == 0.0
+
+    def test_rectangle(self):
+        rectangle = rcwa.Rectangle(1.0, 1.0, 1.0, 0.0)
+        assert rectangle.material == 1.0
+        assert rectangle.x_width == 1.0
+        assert rectangle.y_width == 1.0
+        assert rectangle.rotation_deg == 0.0
+
+
+def test_duplicate_shape():
+    rect = rcwa.Rectangle(
+        material=1.0,
+        x_width=1,
+        y_width=1,
+        rotation_deg=0,
+    )
+    rect2 = rcwa.duplicate_shape(rect, 5)[0]
+    assert rect2.material == rect.material
