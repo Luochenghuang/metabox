@@ -306,7 +306,6 @@ class Field2D(FieldProperties):
 
     def to_rgb_intensity(self):
         """Return RGB image of the intensity."""
-        import colour
 
         intensity_distributions = self.get_intensity().numpy()
         weighted_intensity_distributions = []
@@ -808,40 +807,40 @@ def propagate_with_propagator_batched(
     return out
 
 
-def propagate_with_propagator(
-    field: tf.Tensor, propagator: tf.Tensor, use_padding=True, upsampling=1
-) -> tf.Tensor:
-    """
-    Progragates the field through a distance using the transfer function.
-
-    Args:
-        field: The field to propagate.
-        propagator: The transfer function.
-        use_padding: Whether to use padding or not.
-        upsampling: The upsampling factor.
-    """
-    if use_padding:
-        _, m = field.shape
-        field = tf.transpose(field, perm=[1, 2, 0])
-        field_real = tf.math.real(field)
-        field_imag = tf.math.imag(field)
-        field_real = tf.image.resize(field_real, [m, m], method="nearest")
-        field_imag = tf.image.resize(field_imag, [m, m], method="nearest")
-        field = tf.cast(field_real, dtype=tf.complex64) + 1j * tf.cast(
-            field_imag, dtype=tf.complex64
-        )
-        field = tf.image.resize_with_crop_or_pad(field, 2 * m - 1, 2 * m - 1)
-        field = tf.transpose(field, perm=[2, 0, 1])
-
-    field_freq = tf.signal.fftshift(tf.signal.fft2d(field))
-    field_filtered = tf.signal.ifftshift(field_freq * propagator)
-    out = tf.signal.ifft2d(field_filtered)
-
-    if use_padding:
-        # Crop back down to m x m matrices
-        out = tf.image.resize_with_crop_or_pad(out, m, m)
-
-    return out
+# def propagate_with_propagator(
+#     field: tf.Tensor, propagator: tf.Tensor, use_padding=True, upsampling=1
+# ) -> tf.Tensor:
+#     """
+#     Progragates the field through a distance using the transfer function.
+#
+#     Args:
+#         field: The field to propagate.
+#         propagator: The transfer function.
+#         use_padding: Whether to use padding or not.
+#         upsampling: The upsampling factor.
+#     """
+#     if use_padding:
+#         _, m = field.shape
+#         field = tf.transpose(field, perm=[1, 2, 0])
+#         field_real = tf.math.real(field)
+#         field_imag = tf.math.imag(field)
+#         field_real = tf.image.resize(field_real, [m, m], method="nearest")
+#         field_imag = tf.image.resize(field_imag, [m, m], method="nearest")
+#         field = tf.cast(field_real, dtype=tf.complex64) + 1j * tf.cast(
+#             field_imag, dtype=tf.complex64
+#         )
+#         field = tf.image.resize_with_crop_or_pad(field, 2 * m - 1, 2 * m - 1)
+#         field = tf.transpose(field, perm=[2, 0, 1])
+#
+#     field_freq = tf.signal.fftshift(tf.signal.fft2d(field))
+#     field_filtered = tf.signal.ifftshift(field_freq * propagator)
+#     out = tf.signal.ifft2d(field_filtered)
+#
+#     if use_padding:
+#         # Crop back down to m x m matrices
+#         out = tf.image.resize_with_crop_or_pad(out, m, m)
+#
+#     return out
 
 
 def get_incident_field_2d(

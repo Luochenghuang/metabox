@@ -995,17 +995,8 @@ def simulate_parameterized_unit_cells(
     """
 
     minibatch_size = sim_config.minibatch_size
-    # fwd_jvp_mode: whether to use the forward JVP method to compute gradient.
-    # If False, the gradient will be computed using the reverse VJP method.
-    fwd_jvp_mode = False
-    # enable_jac_cache: uses custom gradient method to greatly reduce memory
-    # usage for large number of minibatches.
-    enable_jac_cache = False
 
-    if enable_jac_cache:
-        simulate_func = simulate_parameterized_unit_cells_one_batch
-    else:
-        simulate_func = simulate_parameterized_unit_cells_one_batch_no_jvp
+    simulate_func = simulate_parameterized_unit_cells_one_batch
 
     if minibatch_size < parameter_tensor.shape[1]:
         # TODO: multi-GPU support
@@ -1021,7 +1012,6 @@ def simulate_parameterized_unit_cells(
                     proto_cell=proto_cell,
                     incidence=incidence,
                     sim_config=sim_config,
-                    fwd_jvp_mode=fwd_jvp_mode,
                 )
             )
             gc.collect()
@@ -1032,7 +1022,6 @@ def simulate_parameterized_unit_cells(
         proto_cell=proto_cell,
         incidence=incidence,
         sim_config=sim_config,
-        fwd_jvp_mode=fwd_jvp_mode,
     )
 
 
@@ -1041,58 +1030,6 @@ def simulate_parameterized_unit_cells_one_batch(
     proto_cell: ProtoUnitCell,
     incidence: Incidence,
     sim_config: SimConfig,
-    fwd_jvp_mode: bool = True,
-) -> tf.Tensor:
-    if not sim_config.return_tensor:
-        raise ValueError(
-            "SimConfig.return_tensor=True is required for this method."
-        )
-
-    if len(proto_cell.features) == 0:
-        raise ValueError("The proto cell has no features (not parameterized).")
-
-    # use nested inner functions to avoid passing sim_instance as an argument
-    # tf.custom_gradient will otherwise blindly convert every argument to a
-    # tf.Tensor on the graph.
-    @tf.custom_gradient
-    def inner_simulate(inner_parameter_tensor):
-        nonlocal proto_cell, incidence, sim_config, fwd_jvp_mode
-        output, jvp = _compute_output_and_jvp(
-            inner_parameter_tensor.numpy(),
-            proto_cell,
-            incidence,
-            sim_config,
-            fwd_jvp_mode,
-        )
-
-        def backward(upstream):
-            # save the gradient of the output with respect to the variables
-            nonlocal jvp
-            # jvp shape: (batch_size, n_cells, t_xy, n_features)
-            # upstream shape: (batch_size, n_cells, t_xy)
-            # downstream shape: (n_features, n_cells)
-            # upstream shape now: (batch_size, n_cells, t_xy, 1)
-            upstream = upstream[..., tf.newaxis]
-            jvp = tf.cast(jvp, upstream.dtype)
-            jvp = jvp * upstream
-            # now jvp shape: (n_cells, t_xy, n_features)
-            jvp = tf.reduce_sum(jvp, axis=0, keepdims=False)
-            # now jvp shape: (n_cells, n_features)
-            jvp = tf.reduce_sum(jvp, axis=1, keepdims=False)
-            # transpose to match the shape of the input
-            return tf.transpose(jvp)
-
-        return output, backward
-
-    return inner_simulate(parameter_tensor)
-
-
-def simulate_parameterized_unit_cells_one_batch_no_jvp(
-    parameter_tensor: tf.Tensor,
-    proto_cell: ProtoUnitCell,
-    incidence: Incidence,
-    sim_config: SimConfig,
-    fwd_jvp_mode: bool = False,
 ) -> tf.Tensor:
     if not sim_config.return_tensor:
         raise ValueError(
@@ -1111,101 +1048,6 @@ def simulate_parameterized_unit_cells_one_batch_no_jvp(
         sim_config=sim_config,
     )
     return simulate_one(sim_instance)
-
-
-def _compute_output_and_jvp(
-    parameter_tensor: np.ndarray,
-    proto_cell: ProtoUnitCell,
-    incidence: Incidence,
-    sim_config: SimConfig,
-    fwd_jvp_mode: bool = True,
-    fast_mode: bool = True,
-):
-    """Compute the output and JVP of the output w.r.t. the parameters."""
-    if not sim_config.return_zeroth_order:
-        raise NotImplementedError(
-            "Calculation of Jacobian is only supported when"
-            "SimConfig.return_zeroth_order=True."
-        )
-
-    parameter_tensor = tf.convert_to_tensor(parameter_tensor)
-
-    if fwd_jvp_mode:
-        # the vector used as the column in the forward gradient accumulation
-        n_features = parameter_tensor.shape[0]
-        n_cells = parameter_tensor.shape[1]
-        tangent_array = []
-        for i in range(n_features):
-            new_zero = np.zeros((n_features, 1))
-            new_zero[i, :] = 1
-            tangent_array.append(np.ones((n_features, n_cells)) * new_zero)
-
-        jvps = []
-        for tangent in tangent_array:
-            with tf.autodiff.ForwardAccumulator(
-                primals=parameter_tensor,  # Evaluation point
-                tangents=tangent,  # Tangent vector
-            ) as acc:
-                children = proto_cell.generate_cells_from_parameter_tensor(
-                    parameter_tensor
-                )
-                sim_instance = SimInstance(
-                    unit_cell_array=children,
-                    incidence=incidence,
-                    sim_config=sim_config,
-                )
-                # output shape: (batch_size, n_cells, t_xy)
-                output = simulate_one(sim_instance)
-            # in the shape of (batch_size, n_cells, t_xy)
-            jvp = acc.jvp(output)
-            jvps.append(jvp)
-        # in the shape of (batch_size, n_cells, t_xy, n_features)
-        jac = np.stack(jvps, axis=-1)
-        jac = tf.math.conj(jac)
-
-    else:
-        cell_param_list = []
-        # parameter_tensor shape: (n_features, n_cells)
-        for i in range(parameter_tensor.shape[1]):
-            cell_param_list.append(parameter_tensor[:, i])
-        parameter_tensor = tf.convert_to_tensor(parameter_tensor)
-        with tf.GradientTape(persistent=True) as tape:
-            for i in range(len(cell_param_list)):
-                cell_param = cell_param_list[i]
-                # cell_param shape now: (n_features, 1)
-                cell_param = tf.convert_to_tensor(cell_param)[..., tf.newaxis]
-                tape.watch(cell_param)
-                cell_param_list[i] = cell_param
-            parameter_tensor = tf.concat(cell_param_list, axis=-1)
-            children = proto_cell.generate_cells_from_parameter_tensor(
-                parameter_tensor
-            )
-            sim_instance = SimInstance(
-                unit_cell_array=children,
-                incidence=incidence,
-                sim_config=sim_config,
-            )
-            # output in the shape of (batch_size, n_cells, t_xy)
-            output = simulate_one(sim_instance)
-            outputs = tf.split(
-                output, num_or_size_splits=len(cell_param_list), axis=1
-            )
-
-        jac_array = []
-        for cell_output, cell_param in zip(outputs, cell_param_list):
-            # jac_cell shape: (batch_size, 1, t_xy, n_features, 1)
-            jac_cell = tape.jacobian(cell_output, cell_param)
-            # shape now: (batch_size, t_xy, n_features, 1)
-            # jac_cell = tf.math.conj(jac_cell)[:, 0, ...]
-            jac_cell = jac_cell[:, 0, ...]
-            jac_array.append(jac_cell)
-        del tape
-        # jac shape: (batch_size, t_xy, n_features, n_cells)
-        jac = tf.concat(jac_array, axis=-1)
-        # final jac in the shape of (batch_size, n_cells, t_xy, n_features)
-        jac = tf.transpose(jac, perm=[0, 3, 1, 2])
-
-    return output, jac
 
 
 def simulate(sim_instance: SimInstance) -> SimResult:

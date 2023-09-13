@@ -64,7 +64,7 @@ def test_metamodel():
     # Input layer -> 10 (relu) -> 128 (tanh) -> 256 (relu) -> 256 (tanh) -> 128 (relu) -> 10 (tanh) -> Output layer
     model = modeling.create_and_train_model(
         loaded_sim_lib,
-        n_epochs=100,
+        n_epochs=10,
         hidden_layer_units_list=[10, 128, 10],
         activation_list=["relu", "tanh", "tanh"],
         train_batch_size=100,
