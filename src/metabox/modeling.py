@@ -139,7 +139,7 @@ class NormComplexLayer(tf.keras.layers.Layer):
 
     def call(self, inputs):
         # split into real and imag
-        a, b = tf.split(inputs, 4, axis=-1)
+        a, b = tf.split(inputs, 2, axis=-1)
         # combines two features into a complex feature
         norm = tf.sqrt(a**2 + b**2)
         norm = tf.clip_by_value(norm, 1, np.Inf)

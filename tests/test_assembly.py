@@ -64,11 +64,20 @@ def test_metamodel():
     # Input layer -> 10 (relu) -> 128 (tanh) -> 256 (relu) -> 256 (tanh) -> 128 (relu) -> 10 (tanh) -> Output layer
     model = modeling.create_and_train_model(
         loaded_sim_lib,
-        n_epochs=10,
-        hidden_layer_units_list=[10, 128, 10],
-        activation_list=["relu", "tanh", "tanh"],
+        n_epochs=2,
+        hidden_layer_units_list=[10, 10],
+        activation_list=["relu", "tanh"],
         train_batch_size=100,
     )
+    model_2 = modeling.create_and_train_model(
+        loaded_sim_lib,
+        n_epochs=2,
+        hidden_layer_units_list=[10, 10],
+        activation_list=["relu", "tanh"],
+        train_batch_size=100,
+        limit_output_to_unity=True,
+    )
+    model.plot_training_history()
     model.save("TiO2_square_metamodel", "./tests/temp", overwrite=True)
 
 
@@ -132,6 +141,9 @@ def test_big_fat_test_to_make_sure_it_runs():
         verbose=1,
         keep_best=True,
     )
+    assert isinstance(history, list)
+    for item in history:
+        assert np.isnan(item) == False
 
     assembly.save_lens_assembly(
         lens_assembly, "TiO2_square_lens", "./tests/temp", overwrite=True
@@ -552,7 +564,7 @@ def test_optimize_multiple_LA():
         refractive_index=1.0,  # the propagation medium after the metasurface
         thickness=200e-6,  # the distance to the next surface
         metamodel=metamodel,  # the metamodel to use
-        enable_propagator_cache=False,  # cache the propagators for faster computation
+        enable_propagator_cache=True,  # cache the propagators for faster computation
         set_structures_variable=True,  # set the structures as a variable to optimize
     )
 
@@ -577,6 +589,64 @@ def test_optimize_multiple_LA():
         batched_lens_assembly
     )
     optimizer = tf.keras.optimizers.Adam(learning_rate=1e-9)
+    optimizer.build(batched_lens_assembly.get_variables())
     history = assembly.optimize_multiple_lens_assemblies(
-        unbatched_assemblies, optimizer, n_iter=2, verbose=1
+        unbatched_assemblies, optimizer, n_iter=3, verbose=1
     )
+    assert isinstance(history, list)
+
+
+def test_optimization_of_proto_unit_cell_metasurface():
+    cell_period = 442e-9
+
+    radius = utils.Feature(vmin=0, vmax=221e-9, name="radius")
+    circle_1 = rcwa.Circle(2, radius=radius)
+    patterned_layer = rcwa.Layer(1, thickness=632e-9, shapes=[circle_1])
+    substrate = rcwa.Layer(1.5, thickness=632e-9)
+    cell = rcwa.UnitCell(
+        layers=[patterned_layer, substrate],
+        periodicity=(cell_period, cell_period),
+    )
+    protocell = rcwa.ProtoUnitCell(cell)
+
+    # Create a metasurface.
+    metasurface = assembly.Metasurface(
+        diameter=10e-6,  # 100 microns in diameter
+        refractive_index=1.0,  # the propagation medium after the metasurface
+        thickness=30e-6,  # the distance to the next surface
+        proto_unit_cell=protocell,
+        enable_propagator_cache=True,  # cache the propagators for faster computation
+        set_structures_variable=True,  # set the structures as a variable to optimize
+    )
+
+    # Define the incidence wavelengths and angles.
+    incidence = assembly.Incidence(
+        wavelength=np.linspace(400e-9, 700e-9, 1),
+        phi=[0],  # normal incidence
+        theta=[0],  # normal incidence
+    )
+
+    # Create a lens assembly.
+    lens_assembly = assembly.LensAssembly(
+        surfaces=[metasurface],  # Define the array of surfaces. Here only one.
+        incidence=incidence,  # Define the incidence.
+        figure_of_merit=assembly.FigureOfMerit.LOG_STREHL_RATIO,  # Define the figure of merit.
+        use_x_pol=True,  # Use the x-polarization.
+    )
+
+    # Use the Adam optimizer to optimize the lens assembly. This rate should be
+    # empirically determined.
+    optimizer = tf.keras.optimizers.Adam(learning_rate=3e-8)
+    optimizer.build(lens_assembly.get_variables())
+
+    # Optimize the lens assembly. Returns the best-optimized lens assembly and the loss history.
+    history = assembly.optimize_single_lens_assembly(
+        lens_assembly,
+        optimizer,
+        n_iter=2,
+        verbose=1,
+        keep_best=True,
+    )
+    assert isinstance(history, list)
+    for h in history:
+        assert np.isnan(h) == False
