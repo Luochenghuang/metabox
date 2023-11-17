@@ -39,6 +39,20 @@ Key features of ``metabox`` include:
 
 Overall, ``metabox`` is a powerful tool for both beginners and experienced users in the field of optical system design. By simplifying and accelerating the design process, it paves the way for innovative developments in the optical industry.
 
+==================
+Citing ``metabox``
+==================
+Pre-print manuscript::
+
+   @misc{huang2023broadband,
+         title={Broadband Thermal Imaging using Meta-Optics}, 
+         author={Luocheng Huang and Zheyi Han and Anna Wirth-Singh and Vishwanath Saragadam and Saswata Mukherjee and Johannes E. Fröch and Quentin A. A. Tanguy and Joshua Rollag and Ricky Gibson and Joshua R. Hendrickson and Phillip W. C. Hon and Orrin Kigner and Zachary Coppens and Karl F. Böhringer and Ashok Veeraraghavan and Arka Majumdar},
+         year={2023},
+         eprint={2307.11385},
+         archivePrefix={arXiv},
+         primaryClass={physics.optics}
+   }
+
 =======
 Install
 =======
@@ -80,12 +94,6 @@ Contributors
 ============
 
 * Luocheng Huang: luocheng@uw.edu, https://github.com/Luochenghuang
-
-==================
-Citing ``metabox``
-==================
-
-The manuscript is in preparation.
 
 =============================
 Making Changes & Contributing
