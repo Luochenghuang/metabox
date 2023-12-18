@@ -42,6 +42,7 @@ Overall, ``metabox`` is a powerful tool for both beginners and experienced users
 ==================
 Citing ``metabox``
 ==================
+
 Pre-print manuscript::
 
    @misc{huang2023broadband,
@@ -64,6 +65,7 @@ Install ``metabox`` via ``pip``::
 ===============
 Getting Started
 ===============
+
 Try out ``metabox`` for free on Google Colab. Here are some tutorials on Colab. You can find the local versions `here <https://github.com/Luochenghuang/metabox/tree/main/examples>`_.
 
 `Tutorial 1: Metamodeling <https://colab.research.google.com/drive/12DW9yZPtM90IO_DeU393wANLnnsgXMrM?authuser=1>`_
