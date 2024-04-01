@@ -45,18 +45,22 @@ Citing ``metabox``
 
 Pre-print manuscript::
 
-    @misc{huang2023broadband,
-        title={Broadband Thermal Imaging using Meta-Optics},
-        author={Luocheng Huang and Zheyi Han and Anna Wirth-Singh and Vishwanath Saragadam and Saswata Mukherjee and Johannes E. Fröch and Quentin A. A. Tanguy and Joshua Rollag and Ricky Gibson and Joshua R. Hendrickson and Phillip W. C. Hon and Orrin Kigner and Zachary Coppens and Karl F. Böhringer and Ashok Veeraraghavan and Arka Majumdar},
-        year={2023},
-        eprint={2307.11385},
-        archivePrefix={arXiv},
-        primaryClass={physics.optics},
-    }
+  @article{huang2024broadband,
+    title={Broadband thermal imaging using meta-optics},
+    author={Huang, Luocheng and Han, Zheyi and Wirth-Singh, Anna and Saragadam, Vishwanath and Mukherjee, Saswata and Fr{\"o}ch, Johannes E and Tanguy, Quentin AA and Rollag, Joshua and Gibson, Ricky and Hendrickson, Joshua R and others},
+    journal={Nature Communications},
+    volume={15},
+    number={1},
+    pages={1662},
+    year={2024},
+    publisher={Nature Publishing Group UK London}
+  }
 
 =======
 Install
 =======
+
+Prerequisites: python==3.8
 
 Install ``metabox`` via ``pip``::
 
