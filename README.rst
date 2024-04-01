@@ -43,7 +43,7 @@ Overall, ``metabox`` is a powerful tool for both beginners and experienced users
 Citing ``metabox``
 ==================
 
-Pre-print manuscript::
+If you find this tool helpful, please cite our `paper <https://www.nature.com/articles/s41467-024-45904-w>`_::
 
   @article{huang2024broadband,
     title={Broadband thermal imaging using meta-optics},
